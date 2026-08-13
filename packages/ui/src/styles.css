@@ -1,0 +1,36 @@
+/* ============================================================
+   Nomiqa Design Tokens
+   نقطة البداية لنظام التصميم — تُستبدل القيم عند اعتماد الهوية البصرية.
+   ============================================================ */
+
+@theme {
+  /* الألوان الأساسية */
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0f766e;
+  --color-brand-700: #115e59;
+  --color-brand-900: #134e4a;
+
+  /* الخطوط: خط عربي وخط لاتيني منفصلان مع احتياطي آمن */
+  --font-sans-ar: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', system-ui, sans-serif;
+  --font-sans-en: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* الأنصاف والحواف */
+  --radius-card: 1rem;
+}
+
+/* الاتجاه يُضبط على <html dir> ولا يُعالج بأنماط مكرّرة.
+   استخدم دائماً الخصائص المنطقية: ms-* me-* ps-* pe-* text-start text-end */
+
+:root {
+  color-scheme: light dark;
+}
+
+html[dir='rtl'] {
+  font-family: var(--font-sans-ar);
+}
+
+html[dir='ltr'] {
+  font-family: var(--font-sans-en);
+}

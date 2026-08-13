@@ -1,0 +1,24 @@
+{
+  "common": {
+    "appName": "Nomiqa",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "dashboard": "Dashboard",
+    "loading": "Loading...",
+    "switchLanguage": "العربية"
+  },
+  "marketing": {
+    "title": "Your digital business card",
+    "subtitle": "Create your card, share it with a tap, and follow up with everyone you meet.",
+    "cta": "Start free"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {name}",
+    "noOrganization": "You have not joined an organization yet."
+  },
+  "errors": {
+    "generic": "An unexpected error occurred",
+    "notFound": "Page not found"
+  }
+}

@@ -1,0 +1,86 @@
+# ============================================================
+# بيئة التطوير المحلية فقط.
+# كلمات المرور هنا ثابتة ومقصودة للتطوير — لا تُستخدم في أي بيئة أخرى.
+# Staging وProduction تستخدم خدمات مُدارة (§10.2 من وثيقة المعمارية).
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: nomiqa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nomiqa
+      POSTGRES_PASSWORD: nomiqa_dev_password
+      POSTGRES_DB: nomiqa
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nomiqa -d nomiqa']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nomiqa-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # بديل محلي متوافق مع S3 API — يُستبدل بـObject Storage مُدار في الإنتاج.
+  minio:
+    image: minio/minio:latest
+    container_name: nomiqa-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: nomiqa
+      MINIO_ROOT_PASSWORD: nomiqa_dev_password
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ينشئ الـbucket تلقائياً عند أول تشغيل ثم يخرج.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 nomiqa nomiqa_dev_password &&
+      mc mb --ignore-existing local/nomiqa-dev &&
+      echo 'bucket جاهز';
+      "
+
+  # واجهة لقراءة رسائل البريد المرسلة أثناء التطوير دون إرسال حقيقي.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: nomiqa-mailpit
+    restart: unless-stopped
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

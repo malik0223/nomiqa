@@ -1,0 +1,19 @@
+# توحيد نهايات الأسطر عبر أنظمة التشغيل.
+# بدون هذا الملف يحوّل core.autocrlf على Windows كل الملفات إلى CRLF،
+# فيتعارض مع إعداد LF في .editorconfig وPrettier وينتج فروقاً وهمية.
+* text=auto eol=lf
+
+# ملفات ثنائية لا تُعالج نهايات أسطرها
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+
+# ملفات مولّدة — تُخفى من فروق المراجعة ولا تُحتسب في إحصاءات اللغات
+pnpm-lock.yaml linguist-generated=true -diff

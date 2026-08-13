@@ -1,0 +1,193 @@
+// ============================================================
+// Nomiqa — مخطط قاعدة البيانات
+// المرجع: وثيقة المعمارية §6.3 و§6.4
+//
+// قواعد حاكمة:
+//  1. كل جدول يخص المؤسسة يحمل organizationId + فهرس مركّب يبدأ به.
+//  2. المعرّفات العامة UUID ولا تُكشف أرقام تسلسلية في الروابط.
+//  3. كل التواريخ TIMESTAMPTZ ومخزّنة بـUTC.
+//  4. RLS تُضاف عبر SQL migration يدوية (Prisma لا تولّدها).
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// الهوية والمؤسسات
+// ------------------------------------------------------------
+
+/// المستخدم. المصادقة تتم في Auth0 (ADR-010)؛ هذا الجدول هو
+/// السجل المحلي المرتبط به عبر auth0UserId، ومصدر صلاحيات المنصة.
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  /// معرّف المستخدم في Auth0 (sub). ثابت ولا يتغير.
+  auth0UserId   String    @unique @map("auth0_user_id")
+  email         String    @unique
+  emailVerified Boolean   @default(false) @map("email_verified")
+  fullName      String?   @map("full_name")
+  avatarUrl     String?   @map("avatar_url")
+  locale        String    @default("ar")
+  timeZone      String    @default("Asia/Muscat") @map("time_zone")
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamptz(6)
+  /// حذف ناعم — يُستخدم فقط حيث توجد حاجة قانونية أو تشغيلية (§6.6).
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships OrganizationMembership[]
+  auditLogs   AuditLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+/// المؤسسة (Tenant). جذر عزل البيانات في المنصة.
+model Organization {
+  id           String    @id @default(uuid()) @db.Uuid
+  /// معرّف نصي فريد يُستخدم في المسارات الإدارية.
+  slug         String    @unique
+  name         String
+  nameEn       String?   @map("name_en")
+  logoUrl      String?   @map("logo_url")
+  /// نوع المؤسسة: personal لحساب فردي، business لمؤسسة حقيقية.
+  kind         String    @default("personal")
+  defaultLocale String   @default("ar") @map("default_locale")
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships OrganizationMembership[]
+  auditLogs   AuditLog[]
+
+  @@map("organizations")
+}
+
+/// عضوية مستخدم في مؤسسة. الأدوار تُفرض من هنا، لا من Auth0 Token.
+model OrganizationMembership {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  status         String    @default("active")
+  invitedAt      DateTime? @map("invited_at") @db.Timestamptz(6)
+  joinedAt       DateTime? @map("joined_at") @db.Timestamptz(6)
+  /// تعطيل العضوية يجب أن يمنع الوصول فوراً (§12.2 من وثيقة المعمارية).
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles        MembershipRole[]
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, status])
+  @@index([userId])
+  @@map("organization_memberships")
+}
+
+/// الأدوار. الأدوار النظامية عامة (organizationId = null)،
+/// ويمكن لاحقاً إضافة أدوار مخصصة لكل مؤسسة.
+model Role {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  key            String
+  name           String
+  nameEn         String?  @map("name_en")
+  isSystem       Boolean  @default(false) @map("is_system")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  permissions     RolePermission[]
+  membershipRoles MembershipRole[]
+
+  @@unique([organizationId, key])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  /// صيغة الصلاحية: resource:action — مثل cards:publish
+  key         String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model MembershipRole {
+  membershipId String @map("membership_id") @db.Uuid
+  roleId       String @map("role_id") @db.Uuid
+
+  membership OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role       Role                   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([membershipId, roleId])
+  @@map("membership_roles")
+}
+
+// ------------------------------------------------------------
+// سجل التدقيق (§9.5)
+// ------------------------------------------------------------
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  action         String
+  resourceType   String   @map("resource_type")
+  resourceId     String?  @map("resource_id")
+  /// نتيجة العملية: success | denied | failed
+  outcome        String   @default("success")
+  requestId      String?  @map("request_id")
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  /// Metadata محدودة — يُمنع وضع أسرار أو بيانات شخصية غير لازمة.
+  metadata       Json?
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actor        User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, occurredAt(sort: Desc)])
+  @@index([actorUserId, occurredAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// ------------------------------------------------------------
+// Transactional Outbox (§6.10)
+// ------------------------------------------------------------
+
+model OutboxEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String?   @map("organization_id") @db.Uuid
+  eventType      String    @map("event_type")
+  payload        Json
+  /// pending | processing | processed | failed
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  lastError      String?   @map("last_error")
+  availableAt    DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
+  processedAt    DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([status, availableAt])
+  @@map("outbox_events")
+}

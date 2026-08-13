@@ -1,0 +1,21 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# سكربتات التثبيت مرفوضة افتراضياً في pnpm. نسمح فقط بما يحتاج
+# فعلاً إلى بناء ثنائيات، ونمنع سكربتات القياس والتتبّع.
+allowBuilds:
+  # مطلوبة: تُنزّل محركات Prisma الثنائية
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  # مطلوبة: ثنائي esbuild الذي يعتمد عليه vitest وtsx
+  esbuild: true
+  # مطلوبة: معالجة الصور في Next وWorker
+  sharp: true
+  # غير مطلوبة: رسالة دعائية بعد التثبيت
+  '@nestjs/core': false
+  # غير مطلوبة: تتبّع تحليلي لمزوّد خارجي
+  '@scarf/scarf': false
+  # غير مطلوبة: تسريع اختياري لـBullMQ، له بديل JS خالص
+  msgpackr-extract: false

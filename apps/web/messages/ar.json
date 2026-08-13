@@ -1,0 +1,24 @@
+{
+  "common": {
+    "appName": "نمِقة",
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج",
+    "dashboard": "لوحة التحكم",
+    "loading": "جارٍ التحميل...",
+    "switchLanguage": "English"
+  },
+  "marketing": {
+    "title": "بطاقتك المهنية الرقمية",
+    "subtitle": "أنشئ بطاقتك، شاركها بلمسة، وتابع من تواصل معك.",
+    "cta": "ابدأ مجاناً"
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "welcome": "مرحباً، {name}",
+    "noOrganization": "لم تنضم إلى أي مؤسسة بعد."
+  },
+  "errors": {
+    "generic": "حدث خطأ غير متوقع",
+    "notFound": "الصفحة غير موجودة"
+  }
+}
