@@ -19,6 +19,7 @@
     "db:migrate": "pnpm --filter @nomiqa/database migrate",
     "db:seed": "pnpm --filter @nomiqa/database seed",
     "db:studio": "pnpm --filter @nomiqa/database studio",
+    "verify:auth0": "dotenv -e .env -- node scripts/verify-auth0.mjs",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down"
   },

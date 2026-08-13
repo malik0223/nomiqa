@@ -10,6 +10,7 @@
 | [المعمارية التقنية](Digital_Business_Card_SaaS_Technical_Architecture_AR.md) | الحزمة التقنية ونموذج البيانات وضوابط الأمان  |
 | [خطة العمل](Digital_Business_Card_SaaS_Work_Plan_AR.md)                      | السبرنتات والمهام ومعايير الإنجاز             |
 | [سجل ADR](docs/adr/README.md)                                                | القرارات المعمارية المعتمدة والمفتوحة         |
+| [إعداد Auth0](docs/auth0-setup.md)                                           | خطوات تسجيل التطبيق والـAPI في Auth0          |
 
 ## المتطلبات
 
@@ -51,23 +52,17 @@ pnpm dev
 
 ## إعداد Auth0
 
-القرار موثّق في [ADR-010](docs/adr/ADR-010-auth0-identity-provider.md).
+الخطوات الكاملة بالقيم الدقيقة في **[docs/auth0-setup.md](docs/auth0-setup.md)**،
+والقرار موثّق في [ADR-010](docs/adr/ADR-010-auth0-identity-provider.md).
 
-1. أنشئ **Tenant منفصلاً لكل بيئة** (dev / staging / prod).
-   منطقة الـTenant تُختار عند الإنشاء **ولا تتغير لاحقاً دون ترحيل** —
-   احسمها مع قرار منطقة الاستضافة.
-2. أنشئ تطبيق **Regular Web Application** لـNext.js:
-   - Allowed Callback URLs: `http://localhost:3000/auth/callback`
-   - Allowed Logout URLs: `http://localhost:3000`
-3. أنشئ **API** في Auth0 بمعرّف (Identifier) مثل `https://api.nomiqa.local`،
-   وضعه في `AUTH0_AUDIENCE`. بدونه يصدر Auth0 ‏ID Token فقط ويرفض الـAPI كل طلب.
-4. ولّد `AUTH0_SECRET`:
+باختصار: أنشئ Tenant للتطوير، ثم **سجّل الـAPI أولاً** (`https://api.nomiqa.local`)،
+ثم تطبيق **Regular Web Application**، وعبّئ القيم في `.env`. للتحقق:
 
 ```bash
-openssl rand -hex 32
+pnpm verify:auth0
 ```
 
-5. فعّل التحقق من البريد وسياسة كلمة المرور والحماية من المحاولات المتكررة.
+> ترتيب الخطوات مقصود: بدون API مسجَّل يصدر Auth0 ‏ID Token فقط، فيرفض الـAPI كل طلب.
 
 ## الأوامر
 
@@ -78,6 +73,7 @@ openssl rand -hex 32
 | `pnpm typecheck`               | فحص الأنواع                  |
 | `pnpm test`                    | الاختبارات                   |
 | `pnpm build`                   | بناء كل التطبيقات            |
+| `pnpm verify:auth0`            | التحقق من إعداد Auth0        |
 | `pnpm db:migrate`              | تطبيق المهاجرات              |
 | `pnpm db:studio`               | متصفح قاعدة البيانات         |
 | `pnpm infra:up` / `infra:down` | تشغيل وإيقاف الخدمات المحلية |

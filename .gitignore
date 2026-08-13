@@ -31,6 +31,8 @@ test-results/
 .vscode/*
 !.vscode/extensions.json
 .idea/
+# إعدادات Claude Code الشخصية لكل مطوّر — launch.json فقط مشترك
+.claude/settings.local.json
 .DS_Store
 Thumbs.db
 
