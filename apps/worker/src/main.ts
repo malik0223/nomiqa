@@ -1,6 +1,8 @@
 import { Worker } from 'bullmq';
-import { QUEUE_NAMES } from '@nomiqa/contracts';
+import { QUEUE_NAMES, type EmailJobData } from '@nomiqa/contracts';
 import { createLogger } from '@nomiqa/observability';
+import { handleEmailFailure, handleEmailJob } from './email/handler.js';
+import { closeTransporter } from './email/transport.js';
 import { DEFAULT_CONCURRENCY, createRedisConnection } from './queue-config.js';
 
 const logger = createLogger('worker');
@@ -13,11 +15,11 @@ const connection = createRedisConnection();
  * طابوراً حساساً للزمن (البريد) — راجع "فصل Queues حسب طبيعة الحمل" §5.8.
  */
 const workers = [
-  new Worker(
+  new Worker<EmailJobData>(
     QUEUE_NAMES.EMAIL,
     async (job) => {
-      logger.info({ jobId: job.id, name: job.name }, 'معالجة مهمة بريد');
-      // TODO(S2): ربط مزوّد البريد الفعلي.
+      logger.info({ jobId: job.id, template: job.data.template }, 'إرسال بريد');
+      await handleEmailJob(job);
     },
     { connection, concurrency: DEFAULT_CONCURRENCY },
   ),
@@ -38,6 +40,17 @@ for (const worker of workers) {
       { queue: worker.name, jobId: job?.id, attempts: job?.attemptsMade, error: error.message },
       'فشلت المهمة',
     );
+
+    if (worker.name === QUEUE_NAMES.EMAIL) {
+      // نسجّل الفشل بعد استنفاد المحاولات فقط، وإلا وسمنا رسالة
+      // ستنجح في المحاولة التالية بأنها فاشلة.
+      const exhausted = job !== undefined && job.attemptsMade >= (job.opts.attempts ?? 1);
+      if (exhausted) {
+        void handleEmailFailure(job as never, error).catch((failure: Error) =>
+          logger.error({ error: failure.message }, 'تعذّر تسجيل فشل البريد'),
+        );
+      }
+    }
   });
 }
 
@@ -47,6 +60,7 @@ logger.info({ queues: workers.map((w) => w.name) }, 'الـWorker يعمل');
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'بدء الإيقاف النظيف');
   await Promise.all(workers.map((worker) => worker.close()));
+  await closeTransporter();
   await connection.quit();
   process.exit(0);
 }

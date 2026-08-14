@@ -22,8 +22,8 @@ export interface TenantFixture {
 export async function resetData(): Promise<void> {
   await admin.$executeRawUnsafe(`
     TRUNCATE TABLE
-      outbox_events, audit_logs, membership_roles,
-      organization_memberships, organizations, users
+      outbox_events, audit_logs, membership_roles, file_objects,
+      notification_deliveries, organization_memberships, organizations, users
     RESTART IDENTITY CASCADE
   `);
 }

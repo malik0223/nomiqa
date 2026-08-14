@@ -76,13 +76,58 @@ export const externalUrlSchema = z
 
 /** حدود رفع الملفات — تُطبَّق في الواجهة وفي الـAPI معاً. */
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'] as const;
+export const DOCUMENT_MIME_TYPES = ['application/pdf'] as const;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
-export const imageUploadSchema = z.object({
-  fileName: z.string().min(1).max(255),
-  mimeType: z.enum(IMAGE_MIME_TYPES, { message: 'نوع الملف غير مدعوم' }),
-  sizeBytes: z.number().int().positive().max(MAX_IMAGE_BYTES, 'حجم الملف يتجاوز 5 ميغابايت'),
-});
+/** غرض الملف. يحدد النوع المسموح والحجم الأقصى. */
+export const FILE_PURPOSES = ['avatar', 'logo', 'cover', 'document'] as const;
+export type FilePurpose = (typeof FILE_PURPOSES)[number];
+
+export const filePurposeRules: Record<
+  FilePurpose,
+  { mimeTypes: readonly string[]; maxBytes: number }
+> = {
+  avatar: { mimeTypes: IMAGE_MIME_TYPES, maxBytes: MAX_IMAGE_BYTES },
+  logo: { mimeTypes: IMAGE_MIME_TYPES, maxBytes: MAX_IMAGE_BYTES },
+  cover: { mimeTypes: IMAGE_MIME_TYPES, maxBytes: MAX_IMAGE_BYTES },
+  document: { mimeTypes: DOCUMENT_MIME_TYPES, maxBytes: MAX_DOCUMENT_BYTES },
+};
+
+/**
+ * طلب رابط رفع.
+ *
+ * التحقق مزدوج عمداً: الصيغة أولاً، ثم مطابقة النوع والحجم لقواعد
+ * الغرض المحدد — فلا يُقبل PDF كصورة شخصية ولا صورة بحجم مستند.
+ */
+export const uploadRequestSchema = z
+  .object({
+    purpose: z.enum(FILE_PURPOSES, { message: 'غرض غير مدعوم' }),
+    fileName: z.string().trim().min(1).max(255),
+    mimeType: z.string().trim().min(1).max(128),
+    sizeBytes: z.number().int().positive(),
+  })
+  .superRefine((value, ctx) => {
+    const rules = filePurposeRules[value.purpose];
+
+    if (!rules.mimeTypes.includes(value.mimeType)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['mimeType'],
+        message: `نوع غير مدعوم لهذا الغرض. المسموح: ${rules.mimeTypes.join('، ')}`,
+      });
+    }
+
+    if (value.sizeBytes > rules.maxBytes) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sizeBytes'],
+        message: `الحجم يتجاوز الحد المسموح (${Math.round(rules.maxBytes / 1024 / 1024)} ميغابايت)`,
+      });
+    }
+  });
+
+export type UploadRequestInput = z.infer<typeof uploadRequestSchema>;
 
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

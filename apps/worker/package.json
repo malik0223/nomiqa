@@ -16,10 +16,12 @@
     "@nomiqa/database": "workspace:*",
     "@nomiqa/observability": "workspace:*",
     "bullmq": "^5.30.0",
-    "ioredis": "^5.4.1"
+    "ioredis": "^5.4.1",
+    "nodemailer": "^9.0.5"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
+    "@types/nodemailer": "^8.0.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }

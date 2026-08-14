@@ -5,7 +5,9 @@ import { AuthModule } from './auth/auth.module.js';
 import { Auth0JwtGuard } from './auth/auth0-jwt.guard.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
 import { RequestIdMiddleware } from './common/request-id.middleware.js';
+import { FilesModule } from './files/files.module.js';
 import { HealthController } from './health/health.controller.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { PermissionsGuard } from './tenancy/permissions.guard.js';
@@ -16,9 +18,11 @@ import { UsersModule } from './users/users.module.js';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, cache: true }),
     PrismaModule,
+    NotificationsModule,
     AuthModule,
     OrganizationsModule,
     UsersModule,
+    FilesModule,
   ],
   controllers: [HealthController],
   providers: [

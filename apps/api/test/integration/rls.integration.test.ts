@@ -48,10 +48,13 @@ describe('عزل بيانات المؤسسات عبر RLS', () => {
       >`
         SELECT relname, relrowsecurity, relforcerowsecurity
         FROM pg_class
-        WHERE relname IN ('organization_memberships', 'audit_logs', 'outbox_events')
+        WHERE relname IN (
+          'organization_memberships', 'audit_logs', 'outbox_events',
+          'file_objects', 'notification_deliveries'
+        )
       `;
 
-      expect(rows).toHaveLength(3);
+      expect(rows).toHaveLength(5);
       for (const row of rows) {
         expect(row.relrowsecurity, `${row.relname} بلا RLS`).toBe(true);
         // بدون FORCE يتجاوز مالك الجدول السياسات.
@@ -209,6 +212,59 @@ describe('عزل بيانات المؤسسات عبر RLS', () => {
 
       expect(events).toHaveLength(1);
       expect(events[0]?.eventType).toBe('test.a');
+    });
+
+    it('الملفات معزولة بين المؤسسات', async () => {
+      await admin.$executeRaw`SELECT set_config('app.organization_id', ${orgA.organizationId}, true)`;
+      await admin.fileObject.createMany({
+        data: [
+          {
+            organizationId: orgA.organizationId,
+            storageKey: `${orgA.organizationId}/avatar/a.png`,
+            purpose: 'avatar',
+            mimeType: 'image/png',
+            sizeBytes: 100,
+          },
+          {
+            organizationId: orgB.organizationId,
+            storageKey: `${orgB.organizationId}/avatar/b.png`,
+            purpose: 'avatar',
+            mimeType: 'image/png',
+            sizeBytes: 100,
+          },
+        ],
+      });
+
+      const files = await asOrganization(orgA.organizationId, (tx) => tx.fileObject.findMany());
+
+      expect(files).toHaveLength(1);
+      expect(files[0]?.organizationId).toBe(orgA.organizationId);
+    });
+
+    it('سجلات الإشعارات معزولة بين المؤسسات', async () => {
+      await admin.notificationDelivery.createMany({
+        data: [
+          {
+            organizationId: orgA.organizationId,
+            channel: 'email',
+            template: 'welcome',
+            recipientHash: 'hash-a',
+          },
+          {
+            organizationId: orgB.organizationId,
+            channel: 'email',
+            template: 'welcome',
+            recipientHash: 'hash-b',
+          },
+        ],
+      });
+
+      const deliveries = await asOrganization(orgA.organizationId, (tx) =>
+        tx.notificationDelivery.findMany(),
+      );
+
+      expect(deliveries).toHaveLength(1);
+      expect(deliveries[0]?.recipientHash).toBe('hash-a');
     });
 
     it('لا يُكتب سجل تدقيق باسم مؤسسة أخرى', async () => {

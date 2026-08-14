@@ -64,6 +64,7 @@ model Organization {
 
   memberships OrganizationMembership[]
   auditLogs   AuditLog[]
+  files       FileObject[]
 
   @@map("organizations")
 }
@@ -169,6 +170,67 @@ model AuditLog {
   @@index([organizationId, occurredAt(sort: Desc)])
   @@index([actorUserId, occurredAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ------------------------------------------------------------
+// الملفات (§8)
+// ------------------------------------------------------------
+
+/// سجل ملف في Object Storage. الملف الثنائي لا يُحفظ في PostgreSQL أبداً.
+model FileObject {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  ownerUserId    String?   @map("owner_user_id") @db.Uuid
+  /// مفتاح الكائن في التخزين — معرّف غير متوقع، لا اسم الملف الأصلي.
+  storageKey     String    @unique @map("storage_key")
+  /// الغرض: avatar | logo | cover | document
+  purpose        String
+  mimeType       String    @map("mime_type")
+  sizeBytes      Int       @map("size_bytes")
+  /// pending حتى يؤكَّد الرفع فعلياً بفحص وجود الكائن في التخزين.
+  status         String    @default("pending")
+  /// اسم الملف كما رفعه المستخدم — للعرض فقط، لا يُستخدم في المسار.
+  originalName   String?   @map("original_name")
+  uploadedAt     DateTime? @map("uploaded_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, purpose, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+  @@map("file_objects")
+}
+
+// ------------------------------------------------------------
+// الإشعارات (§5.9)
+// ------------------------------------------------------------
+
+/// سجل محاولات الإرسال. لا يخزّن محتوى الرسالة — البيانات الشخصية
+/// تبقى خارج السجلات (§9.4)، ويُحفظ المرجع والحالة فقط.
+model NotificationDelivery {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String?   @map("organization_id") @db.Uuid
+  /// email | in_app | push | sms
+  channel        String
+  /// مفتاح القالب، مثل welcome أو contact_captured
+  template       String
+  locale         String    @default("ar")
+  /// تجزئة المستلم لا عنوانه — تكفي للربط دون تخزين بريد شخصي.
+  recipientHash  String    @map("recipient_hash")
+  /// pending | sent | failed
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  lastError      String?   @map("last_error")
+  /// معرّف الرسالة لدى المزوّد، لتتبّع الوصول لاحقاً.
+  providerMessageId String? @map("provider_message_id")
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+  @@map("notification_deliveries")
 }
 
 // ------------------------------------------------------------
