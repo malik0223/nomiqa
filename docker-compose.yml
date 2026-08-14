@@ -27,7 +27,10 @@ services:
     image: redis:7-alpine
     container_name: nomiqa-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # noeviction إلزامية: هذا الـRedis يستضيف طوابير BullMQ إلى جانب الـCache،
+    # وأي إخلاء تلقائي يعني فقدان مهام مجدولة صامتاً. ضبط الذاكرة يتم عبر
+    # TTL على كل مفتاح Cache كما تنص وثيقة المعمارية §7، لا عبر الإخلاء.
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
     ports:
       - '6379:6379'
     volumes:

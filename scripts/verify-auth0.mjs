@@ -140,11 +140,49 @@ if (discovery) {
 
 section('5. التحقق من تسجيل الـAPI');
 
-console.log(`      الـaudience المعرّف: ${env.AUTH0_AUDIENCE}`);
-warn(
-  'لا يمكن التحقق من تسجيل الـAPI دون بيانات Management API',
-  'تحقق يدوياً: Applications → APIs يجب أن يحتوي Identifier مطابقاً حرفياً للقيمة أعلاه',
-);
+/**
+ * نسأل Auth0 عن رمز بهذا الـaudience ونقرأ نوع الرفض.
+ *
+ * لا نتوقع النجاح: تطبيق الويب من نوع Regular Web Application ولا يملك
+ * client_credentials عمداً. لكن **سبب** الرفض يميّز حالتين:
+ *   - "Service not found"  → الـAPI غير مسجّل أصلاً، وهذا عطل حقيقي
+ *   - "not authorized to access resource server" → الـAPI موجود، وهو
+ *     الرفض الصحيح المتوقع لهذا النوع من التطبيقات
+ */
+try {
+  const tokenResponse = await fetch(`https://${env.AUTH0_DOMAIN}/oauth/token`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'client_credentials',
+      client_id: env.AUTH0_CLIENT_ID,
+      client_secret: env.AUTH0_CLIENT_SECRET,
+      audience: env.AUTH0_AUDIENCE,
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  const body = await tokenResponse.json();
+  const description = String(body.error_description ?? '');
+
+  if (tokenResponse.ok) {
+    pass(`الـAPI مسجّل والتطبيق مخوَّل عليه: ${env.AUTH0_AUDIENCE}`);
+  } else if (/service not found/i.test(description)) {
+    fail(
+      `الـAPI غير مسجّل في هذا الـTenant: ${env.AUTH0_AUDIENCE}`,
+      'أنشئه من Applications → APIs، وطابق الـIdentifier حرفياً — راجع docs/auth0-setup.md القسم 2',
+    );
+  } else if (/resource server|not authorized/i.test(description)) {
+    pass(`الـAPI مسجّل: ${env.AUTH0_AUDIENCE}`);
+    console.log('      (رفض client_credentials متوقع لتطبيق ويب — التدفق المستخدم هو authorization_code)');
+  } else if (body.error === 'access_denied' || body.error === 'unauthorized_client') {
+    pass(`الـAPI مسجّل: ${env.AUTH0_AUDIENCE}`);
+  } else {
+    warn(`رد غير متوقع من Auth0: ${body.error ?? tokenResponse.status}`, description || undefined);
+  }
+} catch (error) {
+  warn(`تعذّر فحص تسجيل الـAPI: ${error.message}`);
+}
 
 // ---------- الخلاصة ----------
 
