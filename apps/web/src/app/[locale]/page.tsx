@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { Link } from '../../i18n/routing';
 import { auth0 } from '../../lib/auth0';
 
 export default async function HomePage() {
@@ -12,9 +13,12 @@ export default async function HomePage() {
 
       {session ? (
         <div className="flex items-center gap-4">
-          <span className="text-sm text-neutral-600 dark:text-neutral-400">
-            {t('dashboard.welcome', { name: session.user.name ?? session.user.email ?? '' })}
-          </span>
+          <Link
+            href="/dashboard"
+            className="rounded-lg bg-brand-600 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            {t('common.dashboard')}
+          </Link>
           <a
             href="/auth/logout"
             className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"

@@ -15,7 +15,10 @@
   "dashboard": {
     "title": "لوحة التحكم",
     "welcome": "مرحباً، {name}",
-    "noOrganization": "لم تنضم إلى أي مؤسسة بعد."
+    "noOrganization": "لم تنضم إلى أي مؤسسة بعد.",
+    "orgSlug": "الرابط",
+    "roles": "الأدوار",
+    "permissions": "عدد الصلاحيات"
   },
   "errors": {
     "generic": "حدث خطأ غير متوقع",

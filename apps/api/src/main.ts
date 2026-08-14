@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
+import { Logger, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -20,14 +20,9 @@ async function bootstrap(): Promise<void> {
     allowedHeaders: ['Content-Type', 'Authorization', ORGANIZATION_HEADER, 'x-request-id'],
   });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      // يمنع Mass Assignment: أي حقل غير معرّف في الـDTO يرفض الطلب.
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  // لا ValidationPipe عام هنا: فهو يعتمد على class-validator، بينما
+  // المنصة تستخدم Zod ليكون مخطط التحقق مشتركاً بين Web وAPI (§4.6).
+  // التحقق يُطبَّق لكل مسار بـZodValidationPipe على مستوى المعامل.
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()

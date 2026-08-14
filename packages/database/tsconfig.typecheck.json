@@ -1,0 +1,10 @@
+{
+  // البناء يخرج src فقط، لكن فحص الأنواع يجب أن يغطي seed.ts أيضاً —
+  // فهو يعمل بـtsx الذي لا يفحص الأنواع إطلاقاً.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src/**/*.ts", "prisma/**/*.ts"]
+}

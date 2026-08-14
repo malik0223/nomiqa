@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import type { JWTPayload } from 'jose';
 import type { AuthenticatedUser } from '@nomiqa/contracts';
+import { OrganizationProvisioningService } from '../organizations/organization-provisioning.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /**
@@ -14,9 +15,12 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class UserProvisioningService {
   private readonly logger = new Logger(UserProvisioningService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly organizations: OrganizationProvisioningService,
+  ) {}
 
-  async resolveUser(payload: JWTPayload): Promise<AuthenticatedUser> {
+  async resolveUser(payload: JWTPayload, requestId?: string): Promise<AuthenticatedUser> {
     const auth0UserId = payload.sub!;
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : null;
     const emailVerified = payload.email_verified === true;
@@ -27,7 +31,7 @@ export class UserProvisioningService {
     if (existing) {
       if (existing.deletedAt) {
         // حساب محذوف محلياً لا يُعاد إحياؤه ضمنياً عند تقديم رمز صالح.
-        throw new Error('الحساب محذوف');
+        throw new ForbiddenException('الحساب محذوف');
       }
 
       // نحدّث فقط عند التغيّر الفعلي لتفادي كتابة على كل طلب.
@@ -53,19 +57,38 @@ export class UserProvisioningService {
     }
 
     if (!email) {
-      throw new Error('الرمز لا يحتوي على بريد إلكتروني — تحقق من إعداد Scopes في Auth0');
+      throw new ForbiddenException(
+        'الرمز لا يحتوي على بريد إلكتروني — تحقق من Scopes في إعداد Auth0',
+      );
     }
 
-    this.logger.log(`إنشاء سجل مستخدم محلي لهوية Auth0 جديدة`);
+    this.logger.log('أول دخول لهوية Auth0 جديدة — إنشاء المستخدم ومؤسسته');
 
-    const created = await this.prisma.user.create({
-      data: {
-        auth0UserId,
+    /**
+     * المستخدم ومؤسسته وعضويته تُنشأ كوحدة واحدة (§6.10).
+     * لا يجوز أن ينجح إنشاء المستخدم ثم يفشل إنشاء المؤسسة، وإلا بقي
+     * حساب معلّق لا يستطيع الوصول إلى أي شيء ولن يُعاد إنشاؤه لاحقاً
+     * لأن المستخدم أصبح موجوداً.
+     */
+    const created = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          auth0UserId,
+          email,
+          emailVerified,
+          fullName,
+          lastLoginAt: new Date(),
+        },
+      });
+
+      await this.organizations.provisionPersonalOrganization(tx, {
+        userId: user.id,
         email,
-        emailVerified,
         fullName,
-        lastLoginAt: new Date(),
-      },
+        requestId,
+      });
+
+      return user;
     });
 
     return toAuthenticatedUser(created);

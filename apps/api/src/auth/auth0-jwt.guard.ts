@@ -83,7 +83,7 @@ export class Auth0JwtGuard implements CanActivate {
     }
 
     // ربط هوية Auth0 بسجل المستخدم المحلي، وإنشاؤه عند أول دخول.
-    request.user = await this.userProvisioning.resolveUser(payload);
+    request.user = await this.userProvisioning.resolveUser(payload, request.requestId);
     return true;
   }
 }

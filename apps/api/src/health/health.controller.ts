@@ -1,11 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { HealthStatus } from '@nomiqa/contracts';
 import { Public } from '../auth/public.decorator.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
+/**
+ * مسارات الصحة خارج نظام الإصدارات عمداً: يستدعيها موازن الحمل ومنصة
+ * الحاويات، ويجب أن يبقى عنوانها ثابتاً عبر إصدارات الـAPI.
+ */
 @ApiTags('health')
-@Controller('health')
+@Controller({ path: 'health', version: VERSION_NEUTRAL })
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 

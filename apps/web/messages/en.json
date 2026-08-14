@@ -15,7 +15,10 @@
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome, {name}",
-    "noOrganization": "You have not joined an organization yet."
+    "noOrganization": "You have not joined an organization yet.",
+    "orgSlug": "Slug",
+    "roles": "Roles",
+    "permissions": "Permissions"
   },
   "errors": {
     "generic": "An unexpected error occurred",

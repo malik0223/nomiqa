@@ -29,13 +29,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const payload = exception.getResponse();
 
+      // ZodValidationPipe يرمي حمولة منظّمة تحمل code وdetails —
+      // نمرّرها كما هي بدل طمسها برسالة عامة.
+      const structured =
+        typeof payload === 'object' && payload !== null
+          ? (payload as {
+              code?: string;
+              message?: string;
+              details?: ApiErrorBody['error']['details'];
+            })
+          : null;
+
       const body: ApiErrorBody = {
         error: {
-          code: httpStatusToCode(status),
+          code: structured?.code ?? httpStatusToCode(status),
           message:
-            typeof payload === 'string'
-              ? payload
-              : ((payload as { message?: string }).message ?? exception.message),
+            typeof payload === 'string' ? payload : (structured?.message ?? exception.message),
+          ...(structured?.details ? { details: structured.details } : {}),
           requestId,
         },
       };

@@ -3,8 +3,13 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "module": "ESNext",
-    "moduleResolution": "Bundler"
+    // CommonJS مقصود: تطبيق NestJS يعمل بـCJS ويستهلك هذه الحزم بـrequire،
+    // بينما الـWorker (ESM) وWeb يستطيعان استيراد CJS دون مشكلة.
+    // العكس غير صحيح — CJS لا يستطيع require حزمة ESM.
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "verbatimModuleSyntax": false
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
 }

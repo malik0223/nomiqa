@@ -23,6 +23,9 @@
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "dev": {
+      // الحزم المشتركة تُبنى إلى dist قبل إقلاع التطبيقات: NestJS يعمل
+      // بـCommonJS ولا يستطيع require ملفات TypeScript خاماً.
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },

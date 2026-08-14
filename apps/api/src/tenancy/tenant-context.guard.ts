@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import type { TenantContext } from '@nomiqa/contracts';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { NO_TENANT_KEY } from './no-tenant.decorator.js';
 
 export const ORGANIZATION_HEADER = 'x-organization-id';
 
@@ -42,6 +43,15 @@ export class TenantContextGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException('لا يوجد مستخدم مصادق عليه');
+    }
+
+    // مسارات الإقلاع: الهوية تحققت في الحارس السابق، ولا مؤسسة بعد.
+    const noTenant = this.reflector.getAllAndOverride<boolean>(NO_TENANT_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (noTenant) {
+      return true;
     }
 
     const organizationId = request.header(ORGANIZATION_HEADER);

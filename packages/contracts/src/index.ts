@@ -66,6 +66,28 @@ export interface RequestContext {
   tenant: TenantContext | null;
 }
 
+/** مؤسسة كما تظهر للمستخدم الحالي، مع دوره فيها. */
+export interface MyOrganization {
+  id: string;
+  slug: string;
+  name: string;
+  kind: string;
+  defaultLocale: string;
+  roles: string[];
+  permissions: string[];
+}
+
+/**
+ * استجابة مسار الإقلاع `/me`.
+ *
+ * كل مستخدم يملك مؤسسة واحدة على الأقل تُنشأ عند أول دخول،
+ * فلا يوجد حالة `organizations` فارغة في التشغيل الطبيعي.
+ */
+export interface MeResponse {
+  user: AuthenticatedUser;
+  organizations: MyOrganization[];
+}
+
 // ---------- الصحة ----------
 
 export interface HealthStatus {
