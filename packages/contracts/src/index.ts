@@ -4,6 +4,7 @@
  */
 
 export * from './email.js';
+export * from './privacy.js';
 
 export type Locale = 'ar' | 'en';
 
@@ -117,6 +118,7 @@ export const QUEUE_NAMES = {
   IMAGE_PROCESSING: 'image-processing',
   ANALYTICS_INGEST: 'analytics-ingest',
   OUTBOX_DISPATCH: 'outbox-dispatch',
+  ACCOUNT_DELETION: 'account-deletion',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

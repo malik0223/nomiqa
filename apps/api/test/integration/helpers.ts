@@ -23,7 +23,8 @@ export async function resetData(): Promise<void> {
   await admin.$executeRawUnsafe(`
     TRUNCATE TABLE
       outbox_events, audit_logs, membership_roles, file_objects,
-      notification_deliveries, organization_memberships, organizations, users
+      notification_deliveries, user_consents, data_subject_requests,
+      organization_memberships, organizations, users
     RESTART IDENTITY CASCADE
   `);
 }

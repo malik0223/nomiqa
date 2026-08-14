@@ -156,6 +156,14 @@ export const inviteMemberSchema = z.object({
  * الموافقة على التواصل منفصلة تماماً عن الموافقة التسويقية.
  * دمجهما في حقل واحد مخالفة لمتطلبات حماية البيانات.
  */
+/** تحديث موافقة واحدة. الأغراض الإلزامية لا تُسحب من هنا. */
+export const consentUpdateSchema = z.object({
+  purpose: z.enum(['terms', 'privacy', 'marketing'], { message: 'غرض غير معروف' }),
+  granted: z.boolean(),
+});
+
+export type ConsentUpdateInput = z.infer<typeof consentUpdateSchema>;
+
 export const consentSchema = z.object({
   contactConsent: z.literal(true, {
     message: 'الموافقة على حفظ بيانات التواصل مطلوبة',

@@ -42,6 +42,7 @@ model User {
 
   memberships OrganizationMembership[]
   auditLogs   AuditLog[]
+  consents    UserConsent[]
 
   @@index([email])
   @@map("users")
@@ -170,6 +171,64 @@ model AuditLog {
   @@index([organizationId, occurredAt(sort: Desc)])
   @@index([actorUserId, occurredAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ------------------------------------------------------------
+// الخصوصية والموافقات (§6.6 و§9.4)
+// ------------------------------------------------------------
+
+/// موافقة مستخدم على غرض معالجة محدد.
+///
+/// كل غرض موافقة مستقلة: الموافقة على شروط الخدمة ليست موافقة على
+/// التسويق، ودمجهما مخالف لمتطلبات حماية البيانات الشخصية.
+///
+/// السجلات لا تُحدَّث بل تُضاف: سحب الموافقة صف جديد بـgranted=false،
+/// فيبقى تاريخ الموافقات كاملاً وقابلاً للإثبات.
+model UserConsent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  /// terms | privacy | marketing
+  purpose   String
+  granted   Boolean
+  /// إصدار النص الذي وافق عليه — تغيّر النص يستوجب موافقة جديدة.
+  documentVersion String @map("document_version")
+  /// web | api | import
+  source    String   @default("web")
+  /// يُحفظ للإثبات القانوني فقط، ويخضع لسياسة الاحتفاظ.
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt(sort: Desc)])
+  @@map("user_consents")
+}
+
+/// طلب صاحب البيانات: تصدير أو حذف أو تصحيح.
+///
+/// لا مفتاح أجنبي إلى users عمداً: السجل يجب أن **يبقى بعد حذف
+/// المستخدم** كإثبات تنفيذ الطلب. لذلك لا يحمل بيانات شخصية —
+/// معرّف وتجزئة بريد فقط.
+model DataSubjectRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  /// معرّف المستخدم وقت الطلب. يبقى بعد حذفه ولا يشير إلى صف قائم.
+  subjectUserId String    @map("subject_user_id") @db.Uuid
+  /// تجزئة البريد — تكفي للربط عند الاستفسار دون تخزين العنوان.
+  subjectEmailHash String @map("subject_email_hash")
+  /// export | deletion | rectification
+  type          String
+  /// pending | processing | completed | failed
+  status        String    @default("pending")
+  requestedAt   DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz(6)
+  failureReason String?   @map("failure_reason")
+  /// ملخص ما نُفِّذ: أعداد الصفوف والملفات المحذوفة، بلا محتوى.
+  outcome       Json?
+
+  @@index([subjectUserId, requestedAt(sort: Desc)])
+  @@index([status, requestedAt])
+  @@map("data_subject_requests")
 }
 
 // ------------------------------------------------------------

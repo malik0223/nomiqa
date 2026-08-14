@@ -178,6 +178,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.1109.0
+        version: 3.1109.0
       '@nomiqa/config':
         specifier: workspace:*
         version: link:../../packages/config

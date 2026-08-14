@@ -1,6 +1,7 @@
 import { Worker } from 'bullmq';
-import { QUEUE_NAMES, type EmailJobData } from '@nomiqa/contracts';
+import { QUEUE_NAMES, type AccountDeletionJobData, type EmailJobData } from '@nomiqa/contracts';
 import { createLogger } from '@nomiqa/observability';
+import { handleAccountDeletion, handleAccountDeletionFailure } from './account/deletion-handler.js';
 import { handleEmailFailure, handleEmailJob } from './email/handler.js';
 import { closeTransporter } from './email/transport.js';
 import { DEFAULT_CONCURRENCY, createRedisConnection } from './queue-config.js';
@@ -24,6 +25,17 @@ const workers = [
     { connection, concurrency: DEFAULT_CONCURRENCY },
   ),
 
+  new Worker<AccountDeletionJobData>(
+    QUEUE_NAMES.ACCOUNT_DELETION,
+    async (job) => {
+      logger.info({ jobId: job.id, requestId: job.data.requestId }, 'تنفيذ حذف حساب');
+      await handleAccountDeletion(job);
+    },
+    // تسلسلياً: الحذف يمس عدة أنظمة، والتوازي يعقّد تشخيص الفشل
+    // في عملية لا رجعة فيها.
+    { connection, concurrency: 1 },
+  ),
+
   new Worker(
     QUEUE_NAMES.OUTBOX_DISPATCH,
     async (job) => {
@@ -40,6 +52,21 @@ for (const worker of workers) {
       { queue: worker.name, jobId: job?.id, attempts: job?.attemptsMade, error: error.message },
       'فشلت المهمة',
     );
+
+    if (worker.name === QUEUE_NAMES.ACCOUNT_DELETION) {
+      const exhausted = job !== undefined && job.attemptsMade >= (job.opts.attempts ?? 1);
+      if (exhausted) {
+        // فشل حذف مستنفَد للمحاولات يحتاج تدخلاً بشرياً: قد يكون
+        // الحساب حُذف جزئياً عبر أنظمة متعددة.
+        logger.error(
+          { requestId: (job.data as AccountDeletionJobData).requestId },
+          'فشل حذف حساب نهائياً — يتطلب مراجعة يدوية',
+        );
+        void handleAccountDeletionFailure(job as never, error).catch((failure: Error) =>
+          logger.error({ error: failure.message }, 'تعذّر تسجيل فشل الحذف'),
+        );
+      }
+    }
 
     if (worker.name === QUEUE_NAMES.EMAIL) {
       // نسجّل الفشل بعد استنفاد المحاولات فقط، وإلا وسمنا رسالة

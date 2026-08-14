@@ -10,6 +10,7 @@ import { HealthController } from './health/health.controller.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { PrivacyModule } from './privacy/privacy.module.js';
 import { PermissionsGuard } from './tenancy/permissions.guard.js';
 import { TenantContextGuard } from './tenancy/tenant-context.guard.js';
 import { UsersModule } from './users/users.module.js';
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module.js';
     OrganizationsModule,
     UsersModule,
     FilesModule,
+    PrivacyModule,
   ],
   controllers: [HealthController],
   providers: [
