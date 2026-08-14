@@ -1,0 +1,15 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    include: ['test/integration/**/*.integration.test.ts'],
+    globalSetup: ['./test/integration/global-setup.ts'],
+    // الاختبارات تتشارك قاعدة بيانات واحدة وتُفرِّغ الجداول بين الحالات،
+    // فالتوازي بين الملفات يسبب تداخلاً غير حقيقي.
+    fileParallelism: false,
+    sequence: { concurrent: false },
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+  },
+});

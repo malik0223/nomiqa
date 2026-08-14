@@ -78,6 +78,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # اختبارات عزل المؤسسات مقابل PostgreSQL حقيقي بدور NOBYPASSRLS.
+      # هذه هي الطبقة الخامسة من طبقات العزل: بدونها قد ينكسر العزل
+      # بتعديل استعلام واحد دون أن يلاحظه أحد.
+      - name: Tenant isolation tests
+        run: pnpm test:integration
+
       - name: Build
         run: pnpm build
 

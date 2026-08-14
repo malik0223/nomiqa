@@ -1,0 +1,10 @@
+{
+  // البناء يخرج src فقط (tsconfig.json)، لكن فحص الأنواع يجب أن يغطي
+  // اختبارات التكامل أيضاً حتى لا تتعفّن مع تغيّر الشيفرة.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

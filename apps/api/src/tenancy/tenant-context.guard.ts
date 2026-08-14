@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { TenantContext } from '@nomiqa/contracts';
+import { withRlsContext } from '@nomiqa/database';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { NO_TENANT_KEY } from './no-tenant.decorator.js';
@@ -59,14 +60,22 @@ export class TenantContextGuard implements CanActivate {
       throw new ForbiddenException(`ترويسة ${ORGANIZATION_HEADER} مطلوبة`);
     }
 
-    const membership = await this.prisma.organizationMembership.findUnique({
-      where: { organizationId_userId: { organizationId, userId: user.id } },
-      include: {
-        roles: {
-          include: { role: { include: { permissions: { include: { permission: true } } } } },
-        },
-      },
-    });
+    // سياق المستخدم مطلوب هنا: سياسة RLS تحجب صفوف العضويات بدونه،
+    // فيرفض الحارس كل طلب فور تشغيل التطبيق بدور NOBYPASSRLS.
+    // ضبط السياق لا يمنح شيئاً — الصف يجب أن يكون موجوداً فعلاً.
+    const membership = await withRlsContext(
+      this.prisma,
+      { userId: user.id, organizationId },
+      (tx) =>
+        tx.organizationMembership.findUnique({
+          where: { organizationId_userId: { organizationId, userId: user.id } },
+          include: {
+            roles: {
+              include: { role: { include: { permissions: { include: { permission: true } } } } },
+            },
+          },
+        }),
+    );
 
     // نفس الرسالة للعضوية غير الموجودة وللمعطّلة، حتى لا تكشف
     // الاستجابة وجود مؤسسة بمعرّف معيّن.
