@@ -138,50 +138,70 @@ if (discovery) {
 
 // ---------- 5. التحقق من الـaudience ----------
 
-section('5. التحقق من تسجيل الـAPI');
+section('5. تدفق الدخول الفعلي');
 
 /**
- * نسأل Auth0 عن رمز بهذا الـaudience ونقرأ نوع الرفض.
+ * نفحص `/authorize` بنفس المعاملات التي يرسلها التطبيق.
  *
- * لا نتوقع النجاح: تطبيق الويب من نوع Regular Web Application ولا يملك
- * client_credentials عمداً. لكن **سبب** الرفض يميّز حالتين:
- *   - "Service not found"  → الـAPI غير مسجّل أصلاً، وهذا عطل حقيقي
- *   - "not authorized to access resource server" → الـAPI موجود، وهو
- *     الرفض الصحيح المتوقع لهذا النوع من التطبيقات
+ * هذا هو الفحص الحاسم: أي خلل هنا يظهر للمستخدم كرسالة عامة
+ * "An error occurred during the authorization flow" بعد إدخال بياناته،
+ * لأن Auth0 يعيد التوجيه إلى الـcallback حاملاً الخطأ.
+ *
+ * لا نستخدم فحص الـtoken endpoint هنا: رفض client_credentials طبيعي
+ * لتطبيق ويب، فلا يميّز الإعداد السليم من المعطوب.
  */
 try {
-  const tokenResponse = await fetch(`https://${env.AUTH0_DOMAIN}/oauth/token`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'client_credentials',
-      client_id: env.AUTH0_CLIENT_ID,
-      client_secret: env.AUTH0_CLIENT_SECRET,
-      audience: env.AUTH0_AUDIENCE,
-    }),
+  const authorizeUrl = new URL(`https://${env.AUTH0_DOMAIN}/authorize`);
+  const params = {
+    client_id: env.AUTH0_CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: `${process.env.APP_BASE_URL ?? 'http://localhost:3000'}/auth/callback`,
+    scope: 'openid profile email offline_access',
+    audience: env.AUTH0_AUDIENCE,
+    state: 'verify-probe',
+    nonce: 'verify-probe',
+  };
+  for (const [key, value] of Object.entries(params)) {
+    authorizeUrl.searchParams.set(key, value);
+  }
+
+  const response = await fetch(authorizeUrl, {
+    redirect: 'manual',
     signal: AbortSignal.timeout(10_000),
   });
 
-  const body = await tokenResponse.json();
-  const description = String(body.error_description ?? '');
+  const location = response.headers.get('location');
 
-  if (tokenResponse.ok) {
-    pass(`الـAPI مسجّل والتطبيق مخوَّل عليه: ${env.AUTH0_AUDIENCE}`);
-  } else if (/service not found/i.test(description)) {
+  if (response.status === 403) {
     fail(
-      `الـAPI غير مسجّل في هذا الـTenant: ${env.AUTH0_AUDIENCE}`,
-      'أنشئه من Applications → APIs، وطابق الـIdentifier حرفياً — راجع docs/auth0-setup.md القسم 2',
+      'Auth0 رفض redirect_uri',
+      `أضف "${params.redirect_uri}" إلى Allowed Callback URLs في إعدادات التطبيق`,
     );
-  } else if (/resource server|not authorized/i.test(description)) {
-    pass(`الـAPI مسجّل: ${env.AUTH0_AUDIENCE}`);
-    console.log('      (رفض client_credentials متوقع لتطبيق ويب — التدفق المستخدم هو authorization_code)');
-  } else if (body.error === 'access_denied' || body.error === 'unauthorized_client') {
-    pass(`الـAPI مسجّل: ${env.AUTH0_AUDIENCE}`);
+  } else if (location) {
+    const target = new URL(location, `https://${env.AUTH0_DOMAIN}`);
+    const oauthError = target.searchParams.get('error');
+    const description = target.searchParams.get('error_description') ?? '';
+
+    if (!oauthError) {
+      pass('Auth0 يقبل الطلب ويعرض شاشة الدخول');
+    } else if (/not authorized to access resource server/i.test(description)) {
+      fail(
+        'التطبيق غير مخوَّل على الـAPI — الدخول سيفشل بعد إدخال البيانات',
+        'من Applications → APIs → Nomiqa API → تبويب Machine To Machine Applications، فعّل تخويل تطبيق الويب',
+      );
+    } else if (/service not found/i.test(description)) {
+      fail(
+        `الـAPI غير مسجّل: ${env.AUTH0_AUDIENCE}`,
+        'أنشئه من Applications → APIs بمعرّف مطابق حرفياً — راجع docs/auth0-setup.md القسم 2',
+      );
+    } else {
+      fail(`Auth0 أعاد الخطأ: ${oauthError}`, description || undefined);
+    }
   } else {
-    warn(`رد غير متوقع من Auth0: ${body.error ?? tokenResponse.status}`, description || undefined);
+    warn(`رد غير متوقع من /authorize: HTTP ${response.status}`);
   }
 } catch (error) {
-  warn(`تعذّر فحص تسجيل الـAPI: ${error.message}`);
+  warn(`تعذّر فحص تدفق الدخول: ${error.message}`);
 }
 
 // ---------- الخلاصة ----------

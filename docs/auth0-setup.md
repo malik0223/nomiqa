@@ -76,6 +76,30 @@
 
 ---
 
+## 3.1 تخويل التطبيق على الـAPI ⚠️
+
+**خطوة إلزامية ويسهل نسيانها.** تسجيل الـAPI وتسجيل التطبيق لا يكفيان —
+يجب ربطهما صراحةً.
+
+`Applications → APIs → Nomiqa API → تبويب Machine To Machine Applications`
+→ فعّل التخويل لتطبيق **Nomiqa Web**.
+
+بدون هذه الخطوة يرفض Auth0 الطلب عند `/authorize` ويعيد التوجيه إلى
+الـcallback بالخطأ:
+
+```text
+invalid_request — Client "..." is not authorized to
+access resource server "https://api.nomiqa.local"
+```
+
+ويظهر للمستخدم كرسالة عامة: _An error occurred during the authorization flow_.
+
+العرض مضلّل لأن كل شيء آخر يبدو سليماً: الـTenant يستجيب، والـAPI مسجّل،
+والدخول **ينجح** إذا حُذف `audience` من الطلب — لكن حذفه يعني رمزاً لا
+يقبله الـAPI، فلا يصلح حلاً.
+
+---
+
 ## 4. تطبيق Machine-to-Machine (مؤجَّل)
 
 مطلوب فقط عند تنفيذ **حذف الحساب**، لأن الحذف يجب أن ينفَّذ على الطرفين:
@@ -136,9 +160,10 @@ pnpm verify:auth0
 
 ## استكشاف الأخطاء
 
-| العرض                          | السبب الغالب                                                               |
-| ------------------------------ | -------------------------------------------------------------------------- |
-| الـAPI يرد `401` على كل طلب    | لم تُسجَّل API في Auth0، أو `AUTH0_AUDIENCE` لا يطابق الـIdentifier حرفياً |
-| `Callback URL mismatch`        | العنوان في Auth0 لا يطابق `http://localhost:3000/auth/callback` تماماً     |
-| لا يصدر Refresh Token          | **Allow Offline Access** غير مفعّل على الـAPI                              |
-| `Service not found` عند الدخول | `AUTH0_AUDIENCE` يشير إلى API غير موجود في هذا الـTenant                   |
+| العرض                                             | السبب الغالب                                                               |
+| ------------------------------------------------- | -------------------------------------------------------------------------- |
+| `An error occurred during the authorization flow` | التطبيق غير مخوَّل على الـAPI — راجع القسم 3.1                             |
+| الـAPI يرد `401` على كل طلب                       | لم تُسجَّل API في Auth0، أو `AUTH0_AUDIENCE` لا يطابق الـIdentifier حرفياً |
+| `Callback URL mismatch`                           | العنوان في Auth0 لا يطابق `http://localhost:3000/auth/callback` تماماً     |
+| لا يصدر Refresh Token                             | **Allow Offline Access** غير مفعّل على الـAPI                              |
+| `Service not found` عند الدخول                    | `AUTH0_AUDIENCE` يشير إلى API غير موجود في هذا الـTenant                   |
