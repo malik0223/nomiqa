@@ -20,6 +20,41 @@
     "roles": "Roles",
     "permissions": "Permissions"
   },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "consents": "Consents",
+    "yourData": "Your data",
+    "fullName": "Full name",
+    "email": "Email",
+    "emailLocked": "Changing your email requires re-verification — contact support.",
+    "locale": "Interface language",
+    "timeZone": "Time zone",
+    "save": "Save",
+    "saved": "Saved",
+    "consent": {
+      "terms": "Terms of service",
+      "privacy": "Privacy policy",
+      "marketing": "Marketing emails",
+      "granted": "Granted",
+      "notGranted": "Not granted",
+      "required": "Required",
+      "grant": "Grant",
+      "withdraw": "Withdraw"
+    },
+    "export": {
+      "title": "Download your data",
+      "description": "A complete copy of your data as JSON.",
+      "action": "Download"
+    },
+    "delete": {
+      "title": "Delete account",
+      "description": "Permanently deletes your account, data and personal organizations. This cannot be undone.",
+      "confirmWord": "DELETE",
+      "confirmLabel": "Type \"{word}\" to confirm",
+      "action": "Delete my account permanently"
+    }
+  },
   "errors": {
     "generic": "An unexpected error occurred",
     "notFound": "Page not found",

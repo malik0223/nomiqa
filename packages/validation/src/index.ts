@@ -156,6 +156,30 @@ export const inviteMemberSchema = z.object({
  * الموافقة على التواصل منفصلة تماماً عن الموافقة التسويقية.
  * دمجهما في حقل واحد مخالفة لمتطلبات حماية البيانات.
  */
+/**
+ * تحديث الملف الشخصي.
+ *
+ * البريد **غير مشمول** عمداً: تغييره يتطلب إعادة تحقق، وقبوله بلا
+ * تحقق ناقلُ استيلاء على الحساب. راجع docs/privacy/rectification.md
+ */
+export const profileUpdateSchema = z
+  .object({
+    fullName: z.string().trim().min(2, 'الاسم قصير جداً').max(120).nullable().optional(),
+    locale: localeSchema.optional(),
+    // قائمة IANA — نتحقق من الصيغة لا من كل قيمة ممكنة.
+    timeZone: z
+      .string()
+      .trim()
+      .max(64)
+      .regex(/^[A-Za-z]+\/[A-Za-z_+-]+$/, 'صيغة المنطقة الزمنية غير صحيحة')
+      .optional(),
+  })
+  .strict()
+  // طلب فارغ خطأ في العميل لا تحديث بلا أثر.
+  .refine((value) => Object.keys(value).length > 0, 'لم تُرسل أي حقول للتحديث');
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
 /** تحديث موافقة واحدة. الأغراض الإلزامية لا تُسحب من هنا. */
 export const consentUpdateSchema = z.object({
   purpose: z.enum(['terms', 'privacy', 'marketing'], { message: 'غرض غير معروف' }),

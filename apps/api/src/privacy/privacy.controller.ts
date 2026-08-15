@@ -1,7 +1,17 @@
-import { Body, Controller, Get, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { AuthenticatedUser, ConsentStatus, UserDataExport } from '@nomiqa/contracts';
-import { consentUpdateSchema, type ConsentUpdateInput } from '@nomiqa/validation';
+import type {
+  AuthenticatedUser,
+  ConsentStatus,
+  UserDataExport,
+  UserProfile,
+} from '@nomiqa/contracts';
+import {
+  consentUpdateSchema,
+  profileUpdateSchema,
+  type ConsentUpdateInput,
+  type ProfileUpdateInput,
+} from '@nomiqa/validation';
 import type { Request } from 'express';
 import { RateLimit } from '../common/rate-limit.decorator.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
@@ -9,6 +19,7 @@ import { CurrentUser } from '../tenancy/current.decorators.js';
 import { NoTenantRequired } from '../tenancy/no-tenant.decorator.js';
 import { AccountService } from './account.service.js';
 import { ConsentsService } from './consents.service.js';
+import { ProfileService } from './profile.service.js';
 
 /**
  * حقوق صاحب البيانات.
@@ -24,7 +35,32 @@ export class PrivacyController {
   constructor(
     private readonly consents: ConsentsService,
     private readonly account: AccountService,
+    private readonly profile: ProfileService,
   ) {}
+
+  @NoTenantRequired()
+  @Get('profile')
+  @ApiOperation({ summary: 'الملف الشخصي' })
+  async getProfile(@CurrentUser() user: AuthenticatedUser): Promise<UserProfile> {
+    return this.profile.get(user.id);
+  }
+
+  /**
+   * تحديث الملف الشخصي وممارسة حق التصحيح.
+   *
+   * PATCH لا PUT: التحديث جزئي، والحقول غير المرسلة تبقى كما هي.
+   */
+  @NoTenantRequired()
+  @Patch('profile')
+  @RateLimit({ limit: 30, windowSeconds: 3600 })
+  @ApiOperation({ summary: 'تحديث الملف الشخصي (حق التصحيح)' })
+  async updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(profileUpdateSchema)) body: ProfileUpdateInput,
+    @Req() request: Request,
+  ): Promise<UserProfile> {
+    return this.profile.update(user.id, body, { requestId: request.requestId });
+  }
 
   @NoTenantRequired()
   @Get('consents')

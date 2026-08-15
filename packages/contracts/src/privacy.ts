@@ -16,6 +16,16 @@ export interface ConsentStatus {
   updatedAt: string | null;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  emailVerified: boolean;
+  fullName: string | null;
+  locale: string;
+  timeZone: string;
+  createdAt: string;
+}
+
 export const DATA_REQUEST_TYPES = ['export', 'deletion', 'rectification'] as const;
 export type DataRequestType = (typeof DATA_REQUEST_TYPES)[number];
 

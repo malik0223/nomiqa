@@ -1,5 +1,7 @@
+import { NotFoundException } from '@nestjs/common';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { withRlsContext } from '@nomiqa/database';
+import { ProfileService } from '../../src/privacy/profile.service.js';
 import { admin, app, createTenant, disconnectAll, resetData } from './helpers.js';
 
 /**
@@ -169,6 +171,87 @@ describe('الخصوصية وحقوق صاحب البيانات', () => {
 
       expect(visible).toHaveLength(1);
       expect(visible[0]?.subjectEmailHash).toBe('a');
+    });
+  });
+
+  describe('حق التصحيح', () => {
+    it('تعديل الاسم ينشئ سجل تصحيح مكتملاً', async () => {
+      const tenant = await createTenant('rectify-name');
+      const service = new ProfileService(admin as never);
+
+      await service.update(tenant.userId, { fullName: 'اسم مصحّح' });
+
+      const requests = await withRlsContext(app, { userId: tenant.userId }, (tx) =>
+        tx.dataSubjectRequest.findMany(),
+      );
+
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.type).toBe('rectification');
+      expect(requests[0]?.status).toBe('completed');
+      expect(requests[0]?.completedAt).not.toBeNull();
+    });
+
+    it('السجل يحفظ أسماء الحقول لا قيمها', async () => {
+      const tenant = await createTenant('rectify-outcome');
+      const service = new ProfileService(admin as never);
+
+      await service.update(tenant.userId, { fullName: 'قيمة حساسة جداً' });
+
+      const request = await withRlsContext(app, { userId: tenant.userId }, (tx) =>
+        tx.dataSubjectRequest.findFirst(),
+      );
+
+      const serialized = JSON.stringify(request?.outcome);
+      expect(serialized).toContain('fullName');
+      // القيمة نفسها يجب ألا تُخزَّن، وإلا صار السجل نسخة من البيانات.
+      expect(serialized).not.toContain('قيمة حساسة');
+    });
+
+    it('تغيير التفضيلات وحدها لا ينشئ سجل تصحيح', async () => {
+      const tenant = await createTenant('rectify-prefs');
+      const service = new ProfileService(admin as never);
+
+      await service.update(tenant.userId, { locale: 'en', timeZone: 'Asia/Dubai' });
+
+      const requests = await withRlsContext(app, { userId: tenant.userId }, (tx) =>
+        tx.dataSubjectRequest.findMany(),
+      );
+
+      expect(requests).toHaveLength(0);
+
+      // لكن التفضيلات حُفظت فعلاً
+      const user = await admin.user.findUnique({ where: { id: tenant.userId } });
+      expect(user?.locale).toBe('en');
+      expect(user?.timeZone).toBe('Asia/Dubai');
+    });
+
+    it('إرسال القيمة نفسها لا ينشئ سجلاً', async () => {
+      const tenant = await createTenant('rectify-noop');
+      const service = new ProfileService(admin as never);
+
+      await service.update(tenant.userId, { fullName: 'اسم ثابت' });
+      await service.update(tenant.userId, { fullName: 'اسم ثابت' });
+
+      const requests = await withRlsContext(app, { userId: tenant.userId }, (tx) =>
+        tx.dataSubjectRequest.findMany(),
+      );
+
+      // تغيير واحد فعلي = سجل واحد
+      expect(requests).toHaveLength(1);
+    });
+
+    it('لا يعدّل حساباً محذوفاً', async () => {
+      const tenant = await createTenant('rectify-deleted');
+      await admin.user.update({
+        where: { id: tenant.userId },
+        data: { deletedAt: new Date() },
+      });
+
+      const service = new ProfileService(admin as never);
+
+      await expect(service.update(tenant.userId, { fullName: 'محاولة' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

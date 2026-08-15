@@ -13,6 +13,7 @@
 | [إعداد Auth0](docs/auth0-setup.md)                                           | خطوات تسجيل التطبيق والـAPI في Auth0          |
 | [سجل المعالجة](docs/privacy/processing-records.md)                           | أنشطة معالجة البيانات الشخصية والفجوات        |
 | [حذف الحساب](docs/privacy/deletion.md)                                       | ما يُحذف وما يبقى ولماذا                      |
+| [حق التصحيح](docs/privacy/rectification.md)                                  | ما يمكن تعديله ولماذا البريد مستثنى           |
 
 ## المتطلبات
 
