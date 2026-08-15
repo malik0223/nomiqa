@@ -14,6 +14,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:integration": "pnpm --filter @nomiqa/api test:integration",
+    "test:e2e": "pnpm --filter @nomiqa/web test:e2e",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "db:generate": "pnpm --filter @nomiqa/database generate",

@@ -61,7 +61,15 @@ services:
       timeout: 5s
       retries: 5
 
-  # ينشئ الـbucket تلقائياً عند أول تشغيل ثم يخرج.
+  # ينشئ الـbuckets تلقائياً عند أول تشغيل ثم يخرج.
+  #
+  # دلوان لا واحد:
+  #  - nomiqa-dev: **خاص**. ملفات المؤسسات، لا يُقرأ إلا بروابط موقّعة.
+  #  - nomiqa-dev-public: **قراءة عامة**. نسخ وسائط البطاقات المنشورة
+  #    وحدها، تُوضع فيه عند النشر وتُحذف عند إلغائه.
+  #
+  # الفصل لأن القراءة العامة خاصية للدلو كله: لو وُضع النوعان معاً
+  # لصار خطأ واحد في السياسة تسريباً شاملاً لملفات كل المؤسسات.
   minio-init:
     image: minio/mc:latest
     depends_on:
@@ -71,7 +79,9 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 nomiqa nomiqa_dev_password &&
       mc mb --ignore-existing local/nomiqa-dev &&
-      echo 'bucket جاهز';
+      mc mb --ignore-existing local/nomiqa-dev-public &&
+      mc anonymous set download local/nomiqa-dev-public &&
+      echo 'buckets جاهزة';
       "
 
   # واجهة لقراءة رسائل البريد المرسلة أثناء التطوير دون إرسال حقيقي.

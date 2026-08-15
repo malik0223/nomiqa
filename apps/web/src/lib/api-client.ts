@@ -10,6 +10,8 @@ export class ApiError extends Error {
     readonly code: string,
     message: string,
     readonly requestId?: string,
+    /** أخطاء الحقول كما يرسلها الـAPI — تُعرض كقائمة لا كرسالة واحدة. */
+    readonly details?: Array<{ field: string; message: string }>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -52,17 +54,19 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     let code = 'UNKNOWN';
     let message = `فشل الطلب (${response.status})`;
     let requestId: string | undefined;
+    let details: ApiErrorBody['error']['details'];
 
     try {
       const errorBody = (await response.json()) as ApiErrorBody;
       code = errorBody.error?.code ?? code;
       message = errorBody.error?.message ?? message;
       requestId = errorBody.error?.requestId;
+      details = errorBody.error?.details;
     } catch {
       // الاستجابة ليست JSON — نبقي الرسالة العامة.
     }
 
-    throw new ApiError(response.status, code, message, requestId);
+    throw new ApiError(response.status, code, message, requestId, details);
   }
 
   if (response.status === 204) {

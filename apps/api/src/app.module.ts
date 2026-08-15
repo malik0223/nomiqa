@@ -5,6 +5,7 @@ import { SentryModule } from '@sentry/nestjs/setup';
 import { AdminModule } from './admin/admin.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { Auth0JwtGuard } from './auth/auth0-jwt.guard.js';
+import { CardsModule } from './cards/cards.module.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
 import { RateLimitGuard } from './common/rate-limit.guard.js';
 import { RequestIdMiddleware } from './common/request-id.middleware.js';
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module.js';
     OrganizationsModule,
     UsersModule,
     FilesModule,
+    CardsModule,
     PrivacyModule,
     AdminModule,
   ],

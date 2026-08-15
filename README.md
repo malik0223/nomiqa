@@ -4,16 +4,17 @@
 
 ## الوثائق
 
-| الوثيقة                                                                      | المحتوى                                       |
-| ---------------------------------------------------------------------------- | --------------------------------------------- |
-| [خارطة الطريق](Digital_Business_Card_SaaS_Roadmap_AR.md)                     | المراحل والنطاق وبوابات الخروج ومؤشرات الأداء |
-| [المعمارية التقنية](Digital_Business_Card_SaaS_Technical_Architecture_AR.md) | الحزمة التقنية ونموذج البيانات وضوابط الأمان  |
-| [خطة العمل](Digital_Business_Card_SaaS_Work_Plan_AR.md)                      | السبرنتات والمهام ومعايير الإنجاز             |
-| [سجل ADR](docs/adr/README.md)                                                | القرارات المعمارية المعتمدة والمفتوحة         |
-| [إعداد Auth0](docs/auth0-setup.md)                                           | خطوات تسجيل التطبيق والـAPI في Auth0          |
-| [سجل المعالجة](docs/privacy/processing-records.md)                           | أنشطة معالجة البيانات الشخصية والفجوات        |
-| [حذف الحساب](docs/privacy/deletion.md)                                       | ما يُحذف وما يبقى ولماذا                      |
-| [حق التصحيح](docs/privacy/rectification.md)                                  | ما يمكن تعديله ولماذا البريد مستثنى           |
+| الوثيقة                                                                      | المحتوى                                        |
+| ---------------------------------------------------------------------------- | ---------------------------------------------- |
+| [خارطة الطريق](Digital_Business_Card_SaaS_Roadmap_AR.md)                     | المراحل والنطاق وبوابات الخروج ومؤشرات الأداء  |
+| [المعمارية التقنية](Digital_Business_Card_SaaS_Technical_Architecture_AR.md) | الحزمة التقنية ونموذج البيانات وضوابط الأمان   |
+| [خطة العمل](Digital_Business_Card_SaaS_Work_Plan_AR.md)                      | السبرنتات والمهام ومعايير الإنجاز              |
+| [سجل ADR](docs/adr/README.md)                                                | القرارات المعمارية المعتمدة والمفتوحة          |
+| [إعداد Auth0](docs/auth0-setup.md)                                           | خطوات تسجيل التطبيق والـAPI في Auth0           |
+| [نشر البطاقات](docs/cards/publishing.md)                                     | اللقطة، ثبات الرابط، الوسائط العامة، QR وvCard |
+| [سجل المعالجة](docs/privacy/processing-records.md)                           | أنشطة معالجة البيانات الشخصية والفجوات         |
+| [حذف الحساب](docs/privacy/deletion.md)                                       | ما يُحذف وما يبقى ولماذا                       |
+| [حق التصحيح](docs/privacy/rectification.md)                                  | ما يمكن تعديله ولماذا البريد مستثنى            |
 
 ## المتطلبات
 
@@ -43,13 +44,17 @@ pnpm db:migrate && pnpm db:seed
 pnpm dev
 ```
 
-| الخدمة        | العنوان                        |
-| ------------- | ------------------------------ |
-| Web           | http://localhost:3000          |
-| API           | http://localhost:3001/api      |
-| توثيق API     | http://localhost:3001/api/docs |
-| MinIO Console | http://localhost:9001          |
-| Mailpit       | http://localhost:8025          |
+| الخدمة        | العنوان                         |
+| ------------- | ------------------------------- |
+| Web           | http://localhost:3000           |
+| بطاقة تجريبية | http://localhost:3000/demo-card |
+| API           | http://localhost:3001/api       |
+| توثيق API     | http://localhost:3001/api/docs  |
+| MinIO Console | http://localhost:9001           |
+| Mailpit       | http://localhost:8025           |
+
+> `pnpm db:seed` ينشئ بطاقة منشورة على `/demo-card` في بيئة التطوير وحدها،
+> فيمكن فتح الصفحة العامة وتشغيل اختبارات Playwright بلا تسجيل دخول.
 
 > تسجيل الدخول لن يعمل قبل تعبئة قيم Auth0 في `.env` — راجع القسم التالي.
 
@@ -76,6 +81,7 @@ pnpm verify:auth0
 | `pnpm typecheck`               | فحص الأنواع                  |
 | `pnpm test`                    | اختبارات الوحدة              |
 | `pnpm test:integration`        | اختبارات عزل المؤسسات        |
+| `pnpm test:e2e`                | اختبارات الصفحة العامة       |
 | `pnpm build`                   | بناء كل التطبيقات            |
 | `pnpm verify:auth0`            | التحقق من إعداد Auth0        |
 | `pnpm db:migrate`              | تطبيق المهاجرات              |
@@ -84,6 +90,9 @@ pnpm verify:auth0
 | `pnpm admin:grant <email>`     | منح صلاحية إدارة المنصة      |
 | `pnpm admin:revoke <email>`    | سحبها                        |
 | `pnpm infra:up` / `infra:down` | تشغيل وإيقاف الخدمات المحلية |
+
+> `pnpm test:integration` **يفرّغ جداول قاعدة البيانات المحلية** بين الحالات —
+> بما فيها البطاقة التجريبية. أعد `pnpm db:seed` بعده قبل تشغيل `pnpm test:e2e`.
 
 ## الهيكل
 
@@ -124,3 +133,11 @@ packages/
     مجمّعة فقط، وكل عملية تغيير تُسجَّل في `platform_audit_logs`.
 12. **صلاحية إدارة المنصة تُمنح بسكربت لا بواجهة** — تتجاوز حدود المؤسسات،
     فلا تكون على بُعد نقرة.
+13. **رابط البطاقة ثابت ولا يُعاد استخدامه** — لا يتغير بعد النشر ولا يُمنح
+    لبطاقة أخرى بعد الحذف. الرابط مطبوع على ورق ورموز QR، وكسره أو إعادة
+    توجيهه إلى شخص آخر ضرر لا يمكن التراجع عنه. راجع
+    [docs/cards/publishing.md](docs/cards/publishing.md).
+14. **الصفحة العامة تُقدَّم من اللقطة المنشورة لا من الجداول الحيّة** — ولا
+    تتطلب حساباً ولا تطبيقاً، ولا تحمّل من JavaScript إلا الحد الأدنى.
+15. **الرابط المخفي لا يدخل اللقطة** — الإخفاء قرار خصوصية: لا يظهر في الصفحة
+    ولا في مصدرها ولا في ملف vCard.

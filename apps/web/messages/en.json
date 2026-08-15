@@ -5,6 +5,7 @@
     "signOut": "Sign out",
     "dashboard": "Dashboard",
     "loading": "Loading...",
+    "cancel": "Cancel",
     "switchLanguage": "العربية"
   },
   "marketing": {
@@ -18,7 +19,8 @@
     "noOrganization": "You have not joined an organization yet.",
     "orgSlug": "Slug",
     "roles": "Roles",
-    "permissions": "Permissions"
+    "permissions": "Permissions",
+    "myCards": "My cards"
   },
   "settings": {
     "title": "Settings",
@@ -53,6 +55,130 @@
       "confirmWord": "DELETE",
       "confirmLabel": "Type \"{word}\" to confirm",
       "action": "Delete my account permanently"
+    }
+  },
+  "cards": {
+    "title": "My cards",
+    "create": "New card",
+    "createHint": "Start with a name and a template, finish the rest in the editor.",
+    "empty": "No cards yet. Create your first one.",
+    "edit": "Edit",
+    "viewPublic": "Open public card",
+    "quota": "{used} of {max} cards",
+    "quotaReached": "Plan limit reached",
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "unpublished": "Unpublished",
+      "pendingChanges": "Unpublished changes"
+    },
+    "sections": {
+      "identity": "Identity",
+      "actions": "Call to action",
+      "links": "Links",
+      "documents": "Documents"
+    },
+    "fields": {
+      "fullName": "Full name",
+      "jobTitle": "Job title",
+      "organizationName": "Organization",
+      "department": "Department",
+      "bio": "Bio",
+      "addressLine": "Address",
+      "slug": "Link",
+      "slugHint": "Lowercase letters, numbers and dashes. Fixed after the first publish.",
+      "slugLocked": "The link is fixed after publishing — every QR code you shared depends on it.",
+      "template": "Template",
+      "defaultLocale": "Default card language",
+      "defaultLocaleHint": "The language visitors see. Independent from your dashboard language."
+    },
+    "links": {
+      "title": "Contact methods and links",
+      "add": "Add link",
+      "empty": "Add at least one contact method before publishing.",
+      "type": "Type",
+      "platform": "Platform",
+      "value": "Value",
+      "label": "Button label",
+      "labelPlaceholder": "Leave empty for the default label",
+      "primary": "Primary button",
+      "visible": "Visible",
+      "hiddenHint": "Hidden links appear neither on the card nor in the contact file.",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove",
+      "types": {
+        "phone": "Phone",
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "website": "Website",
+        "booking": "Booking",
+        "social": "Social network",
+        "custom": "Custom link"
+      }
+    },
+    "media": {
+      "title": "Images",
+      "avatar": "Profile photo",
+      "logo": "Logo",
+      "cover": "Cover image",
+      "coverUnsupported": "This template does not show a cover image.",
+      "choose": "Choose image",
+      "remove": "Remove",
+      "badType": "Unsupported image type.",
+      "tooLarge": "Larger than {mb} MB.",
+      "uploadFailed": "Upload failed. Please try again."
+    },
+    "appearance": {
+      "title": "Appearance",
+      "primaryColor": "Primary color",
+      "borderRadius": "Corner radius",
+      "colorScheme": "Color scheme",
+      "sectionOrder": "Section order",
+      "radius": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      },
+      "scheme": {
+        "system": "Follow visitor device",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    },
+    "preview": {
+      "language": "Preview language",
+      "scheme": "Preview mode",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "share": {
+      "title": "Share",
+      "copy": "Copy link",
+      "copied": "Copied",
+      "downloadQr": "Download QR",
+      "open": "Open",
+      "qrAlt": "Card QR code"
+    },
+    "editor": {
+      "title": "Card editor",
+      "content": "Content",
+      "contentLanguage": "Content language",
+      "localeFallbackHint": "A language you leave empty falls back to the default language when displayed.",
+      "link": "Public link",
+      "save": "Save",
+      "saving": "Saving...",
+      "savedAt": "Saved at {time}",
+      "publish": "Publish",
+      "republish": "Publish updates",
+      "unpublish": "Unpublish",
+      "pendingChanges": "You have saved changes that are not published yet — visitors still see the previous version.",
+      "conflict": "This card was changed elsewhere. Reload the page so those changes are not overwritten.",
+      "reload": "Reload",
+      "delete": "Delete card",
+      "deleteTitle": "Delete card",
+      "deleteHint": "Permanently stops the public link. The link is never reused for another card.",
+      "deleteConfirm": "Confirm delete"
     }
   },
   "errors": {

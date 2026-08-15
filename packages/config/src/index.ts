@@ -31,6 +31,16 @@ export const storageEnvSchema = z.object({
   S3_ENDPOINT: z.string().url(),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().min(1),
+  /**
+   * دلو الوسائط المنشورة — **قراءة عامة**.
+   *
+   * منفصل عن `S3_BUCKET` الخاص عمداً: صورة على بطاقة منشورة محتوى عام
+   * بالتعريف، وبقية ملفات المؤسسات ليست كذلك. القراءة العامة خاصية
+   * للدلو كله، فخلطهما يجعل خطأً واحداً في السياسة تسريباً شاملاً.
+   */
+  S3_PUBLIC_BUCKET: z.string().min(1).optional(),
+  /** أصل الـCDN أمام الدلو العام. بدونه تُبنى الروابط من نقطة النهاية. */
+  S3_PUBLIC_BASE_URL: z.string().url().optional(),
   S3_ACCESS_KEY_ID: z.string().min(1),
   S3_SECRET_ACCESS_KEY: z.string().min(1),
   S3_FORCE_PATH_STYLE: z

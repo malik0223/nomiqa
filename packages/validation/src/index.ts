@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { emailSchema, localeSchema, slugSchema } from './primitives.js';
 
 /**
  * مخططات التحقق المشتركة بين Web وAPI.
@@ -7,72 +8,8 @@ import { z } from 'zod';
  * الـAPI يعيد التحقق من كل مدخل دائماً (§4.6 من وثيقة المعمارية).
  */
 
-/** كلمات محجوزة لا يجوز استخدامها كـslug لأنها تتعارض مع مسارات النظام. */
-export const RESERVED_SLUGS = [
-  'api',
-  'admin',
-  'dashboard',
-  'auth',
-  'login',
-  'logout',
-  'signup',
-  'settings',
-  'org',
-  'organization',
-  'ar',
-  'en',
-  'static',
-  '_next',
-  'assets',
-  'about',
-  'pricing',
-  'privacy',
-  'terms',
-  'support',
-] as const;
-
-export const localeSchema = z.enum(['ar', 'en']);
-
-export const uuidSchema = z.string().uuid('معرّف غير صالح');
-
-export const emailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(3, 'البريد الإلكتروني قصير جداً')
-  .max(254, 'البريد الإلكتروني طويل جداً')
-  .email('صيغة البريد الإلكتروني غير صحيحة');
-
-/** رقم هاتف بصيغة E.164 — نخزّن دائماً بصيغة دولية موحّدة. */
-export const phoneSchema = z
-  .string()
-  .trim()
-  .regex(/^\+[1-9]\d{7,14}$/, 'يجب أن يكون الرقم بصيغة دولية مثل ‎+96891234567');
-
-/**
- * slug البطاقة: أحرف لاتينية صغيرة وأرقام وشرطات فقط.
- * لا نسمح بالعربية في الرابط لتفادي مشكلات النسخ والمشاركة عبر QR.
- */
-export const slugSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(3, 'الرابط قصير جداً')
-  .max(48, 'الرابط طويل جداً')
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'يسمح بالأحرف الإنجليزية الصغيرة والأرقام والشرطة فقط')
-  .refine(
-    (value) => !(RESERVED_SLUGS as readonly string[]).includes(value),
-    'هذا الرابط محجوز، اختر رابطاً آخر',
-  );
-
-export const externalUrlSchema = z
-  .string()
-  .trim()
-  .url('صيغة الرابط غير صحيحة')
-  .refine(
-    (value) => value.startsWith('https://') || value.startsWith('http://'),
-    'يجب أن يبدأ الرابط بـhttp أو https',
-  );
+export * from './primitives.js';
+export * from './card.js';
 
 /** حدود رفع الملفات — تُطبَّق في الواجهة وفي الـAPI معاً. */
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'] as const;

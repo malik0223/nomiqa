@@ -94,6 +94,13 @@ export interface CardSnapshot {
   };
 }
 
+/** ملفات الوسائط كما يعرفها المحرر: معرّفات لا روابط. */
+export interface CardMediaIds {
+  avatarFileId: string | null;
+  coverFileId: string | null;
+  logoFileId: string | null;
+}
+
 /** البطاقة كما يراها صاحبها في المحرر. */
 export interface CardDetail {
   id: string;
@@ -107,8 +114,22 @@ export interface CardDetail {
   revision: number;
   content: CardContent[];
   links: CardLinkData[];
+  media: CardMediaIds;
+  /**
+   * روابط معاينة موقّعة قصيرة العمر للصور في المحرر.
+   *
+   * تختلف عن `CardSnapshot.media` عمداً: تلك روابط عامة دائمة تُقدَّم
+   * للزوار، وهذه روابط خاصة تنتهي — المسودة ليست منشورة بعد.
+   */
+  mediaPreview: {
+    avatarUrl?: string | null;
+    coverUrl?: string | null;
+    logoUrl?: string | null;
+  };
   publishedAt: string | null;
   updatedAt: string;
+  /** يعكس آخر نشر: هل المسودة الحالية تختلف عمّا يراه الزوار؟ */
+  hasUnpublishedChanges: boolean;
 }
 
 export interface CardSummary {
@@ -116,6 +137,38 @@ export interface CardSummary {
   slug: string;
   status: CardStatus;
   fullName: string;
+  templateKey: string;
   publishedAt: string | null;
   updatedAt: string;
+  hasUnpublishedChanges: boolean;
+}
+
+/** قالب متاح للاختيار في المحرر. */
+export interface TemplateSummary {
+  key: string;
+  name: string;
+  nameEn: string | null;
+  latestVersion: number;
+  definition: TemplateDefinition;
+}
+
+/**
+ * ما تحتاجه الصفحة العامة.
+ *
+ * مصدرها اللقطة المنشورة وحدها — لا استعلام على جداول المؤسسة، ولا
+ * سياق مصادقة، فتُقدَّم من الـCDN لزائر مجهول (§7.5).
+ */
+export interface PublicCardPage {
+  cardId: string;
+  slug: string;
+  snapshot: CardSnapshot;
+  template: TemplateDefinition;
+  publishedAt: string;
+}
+
+/** حصة الباقة. تُقرأ من الـAPI فلا يكرر المحرر أرقام الحدود. */
+export interface CardEntitlements {
+  maxCards: number;
+  usedCards: number;
+  canCreate: boolean;
 }

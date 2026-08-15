@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import type { MeResponse } from '@nomiqa/contracts';
 import { auth0 } from '../../../lib/auth0';
 import { ApiError, apiFetch } from '../../../lib/api-client';
+import { Link } from '../../../i18n/routing';
 
 export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -37,12 +38,20 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     <main className="mx-auto max-w-3xl px-6 py-16">
       <header className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
-        <a
-          href="/auth/logout"
-          className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
-        >
-          {t('common.signOut')}
-        </a>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/cards"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            {t('dashboard.myCards')}
+          </Link>
+          <a
+            href="/auth/logout"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('common.signOut')}
+          </a>
+        </div>
       </header>
 
       <p className="mt-6 text-lg">

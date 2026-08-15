@@ -19,6 +19,7 @@
 | ADR-010 | **اعتماد Auth0 كمزوّد هوية عبر OIDC**          | **Accepted** | [ADR-010](ADR-010-auth0-identity-provider.md) |
 | ADR-011 | REST API قبل GraphQL                           | Accepted     | —                                             |
 | ADR-012 | PWA قبل تطبيقات الهاتف الأصلية                 | Accepted     | —                                             |
+| ADR-013 | **دلو عام منفصل لوسائط البطاقات المنشورة**     | **Accepted** | [ADR-013](ADR-013-published-card-media.md)    |
 
 > القرارات من ADR-001 إلى ADR-009 وADR-011 وADR-012 موثقة حالياً داخل
 > [وثيقة المعمارية §16](../../Digital_Business_Card_SaaS_Technical_Architecture_AR.md).
@@ -32,3 +33,8 @@
 | اسم النطاق                         | يلزم لتهيئة Callback URLs في Auth0 وشهادات TLS | نشر Staging            |
 | بوابة الدفع                        | يحدد تصميم Billing Module                      | المرحلة 4              |
 | الهوية البصرية                     | يحدد Design Tokens وقوالب البطاقات             | المرحلة 2              |
+
+> القوالب الثلاثة الحالية (`classic` · `minimal` · `bold`) مبنية على الرموز
+> المؤقتة في `packages/ui/src/styles.css`. اعتماد الهوية البصرية يغيّر القيم
+> لا البنية: القوالب صفوف في قاعدة البيانات فوق محرك عرض واحد، وتغييرها لا
+> يستلزم شيفرة جديدة.

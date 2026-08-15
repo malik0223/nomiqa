@@ -20,11 +20,15 @@ export interface TenantFixture {
  * الحذف الشامل عبر RLS يتطلب سياقاً لكل مؤسسة على حدة.
  */
 export async function resetData(): Promise<void> {
+  // البطاقات مذكورة صراحةً رغم أن CASCADE على organizations يكفي:
+  // الاعتماد الضمني على الترتيب يجعل حذف مفتاح أجنبي مستقبلاً يترك
+  // صفوفاً تسرّب بين حالات الاختبار.
   await admin.$executeRawUnsafe(`
     TRUNCATE TABLE
       outbox_events, audit_logs, membership_roles, file_objects,
       notification_deliveries, user_consents, data_subject_requests,
       platform_audit_logs, platform_admins, feature_flag_overrides,
+      card_publications, card_links, card_localizations, cards,
       organization_memberships, organizations, users
     RESTART IDENTITY CASCADE
   `);

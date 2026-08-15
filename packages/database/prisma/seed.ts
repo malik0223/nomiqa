@@ -93,7 +93,162 @@ async function main() {
     console.warn(`  ✓ دور ${role.key} — ${permissions.length} صلاحية`);
   }
 
+  // بيئة التطوير وحدها: الـslug مورد عالمي، وإنشاؤه في Staging أو
+  // الإنتاج يحجز رابطاً حقيقياً على بطاقة وهمية.
+  if (process.env.NODE_ENV === 'development') {
+    await seedDemoCard();
+  }
+
   console.warn('✔ اكتملت التهيئة.');
+}
+
+/**
+ * بطاقة منشورة للتطوير والاختبار الآلي.
+ *
+ * الصفحة العامة تُقدَّم من لقطة منشورة، فبدون بطاقة منشورة لا يمكن
+ * فتح `/${DEMO_SLUG}` محلياً ولا تشغيل اختبارات Playwright عليها.
+ */
+const DEMO_SLUG = 'demo-card';
+
+async function seedDemoCard(): Promise<void> {
+  const user = await prisma.user.upsert({
+    where: { email: 'demo@nomiqa.local' },
+    update: {},
+    create: {
+      auth0UserId: 'seed|demo-user',
+      email: 'demo@nomiqa.local',
+      emailVerified: true,
+      fullName: 'حساب تجريبي',
+    },
+  });
+
+  const organization = await prisma.organization.upsert({
+    where: { slug: 'demo-workspace' },
+    update: {},
+    create: { slug: 'demo-workspace', name: 'مساحة تجريبية', kind: 'personal' },
+  });
+
+  const ownerRole = await prisma.role.findFirst({ where: { organizationId: null, key: 'owner' } });
+  if (ownerRole) {
+    const membership = await prisma.organizationMembership.upsert({
+      where: {
+        organizationId_userId: { organizationId: organization.id, userId: user.id },
+      },
+      update: {},
+      create: {
+        organizationId: organization.id,
+        userId: user.id,
+        status: 'active',
+        joinedAt: new Date(),
+      },
+    });
+
+    await prisma.membershipRole.upsert({
+      where: { membershipId_roleId: { membershipId: membership.id, roleId: ownerRole.id } },
+      update: {},
+      create: { membershipId: membership.id, roleId: ownerRole.id },
+    });
+  }
+
+  const existing = await prisma.card.findUnique({ where: { slug: DEMO_SLUG } });
+  if (existing) {
+    console.warn(`  ✓ بطاقة تجريبية موجودة على /${DEMO_SLUG}`);
+    return;
+  }
+
+  const card = await prisma.card.create({
+    data: {
+      organizationId: organization.id,
+      ownerUserId: user.id,
+      slug: DEMO_SLUG,
+      status: 'published',
+      templateKey: 'classic',
+      templateVersion: 1,
+      defaultLocale: 'ar',
+      theme: { primaryColor: '#0F766E', borderRadius: 'large', colorScheme: 'system' },
+      sectionOrder: ['identity', 'actions', 'links'],
+      publishedAt: new Date(),
+      localizations: {
+        create: [
+          {
+            locale: 'ar',
+            fullName: 'سالم الهنائي',
+            jobTitle: 'مدير المنتج',
+            organizationName: 'نمِقة',
+            bio: 'بطاقة تجريبية للتطوير المحلي.',
+            addressLine: 'مسقط، سلطنة عُمان',
+          },
+          {
+            locale: 'en',
+            fullName: 'Salim Al Hinai',
+            jobTitle: 'Product Manager',
+            organizationName: 'Nomiqa',
+            bio: 'A demo card for local development.',
+            addressLine: 'Muscat, Oman',
+          },
+        ],
+      },
+      links: {
+        create: [
+          { type: 'phone', value: '+96891234567', position: 0, isPrimary: true },
+          { type: 'whatsapp', value: '+96891234567', position: 1, isPrimary: true },
+          { type: 'email', value: 'demo@nomiqa.local', position: 2 },
+          { type: 'website', value: 'https://nomiqa.example', position: 3 },
+        ],
+      },
+    },
+    include: { localizations: true, links: true },
+  });
+
+  await prisma.cardPublication.create({
+    data: {
+      cardId: card.id,
+      revision: card.revision,
+      templateKey: card.templateKey,
+      templateVersion: card.templateVersion,
+      publishedBy: user.id,
+      // نفس بنية اللقطة التي يبنيها الـAPI عند النشر.
+      snapshot: {
+        slug: card.slug,
+        templateKey: card.templateKey,
+        templateVersion: card.templateVersion,
+        defaultLocale: card.defaultLocale,
+        theme: card.theme,
+        sectionOrder: card.sectionOrder,
+        content: Object.fromEntries(
+          card.localizations.map((entry) => [
+            entry.locale,
+            {
+              locale: entry.locale,
+              fullName: entry.fullName,
+              jobTitle: entry.jobTitle,
+              organizationName: entry.organizationName,
+              department: entry.department,
+              bio: entry.bio,
+              addressLine: entry.addressLine,
+            },
+          ]),
+        ),
+        links: card.links
+          .filter((link) => link.isVisible)
+          .sort((first, second) => first.position - second.position)
+          .map((link) => ({
+            id: link.id,
+            type: link.type,
+            platform: link.platform,
+            label: link.label,
+            labelEn: link.labelEn,
+            value: link.value,
+            position: link.position,
+            isVisible: link.isVisible,
+            isPrimary: link.isPrimary,
+          })),
+        media: { avatarUrl: null, coverUrl: null, logoUrl: null },
+      },
+    },
+  });
+
+  console.warn(`  ✓ بطاقة تجريبية منشورة على /${DEMO_SLUG}`);
 }
 
 main()
