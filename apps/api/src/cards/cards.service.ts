@@ -21,7 +21,13 @@ import { Prisma, withRlsContext } from '@nomiqa/database';
 import { slugifyName, type CreateCardInput, type UpdateCardInput } from '@nomiqa/validation';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../files/storage.service.js';
-import { buildSnapshot, parseSectionOrder, parseTheme, publishBlockers } from './card-snapshot.js';
+import {
+  buildSnapshot,
+  parseContactForm,
+  parseSectionOrder,
+  parseTheme,
+  publishBlockers,
+} from './card-snapshot.js';
 import { maxCardsFor } from './entitlements.js';
 
 /** أعمدة الملف اللازمة لبناء رابط — لا نحمّل الصف كاملاً بلا داع. */
@@ -299,6 +305,9 @@ export class CardsService {
           ...(input.sectionOrder !== undefined
             ? { sectionOrder: (input.sectionOrder ?? Prisma.DbNull) as Prisma.InputJsonValue }
             : {}),
+          ...(input.contactForm !== undefined
+            ? { contactForm: input.contactForm as unknown as Prisma.InputJsonValue }
+            : {}),
           ...mediaIds,
           revision: { increment: 1 },
         },
@@ -427,6 +436,7 @@ export class CardsService {
       localizations: card.localizations,
       links: card.links,
       media: media.urls,
+      contactForm: card.contactForm,
     });
 
     const blockers = publishBlockers(snapshot);
@@ -655,6 +665,7 @@ export class CardsService {
         isVisible: link.isVisible,
         isPrimary: link.isPrimary,
       })),
+      contactForm: parseContactForm(card.contactForm),
       media: {
         avatarFileId: card.avatarFileId,
         coverFileId: card.coverFileId,

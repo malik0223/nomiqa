@@ -68,6 +68,8 @@ model Organization {
   auditLogs   AuditLog[]
   files       FileObject[]
   cards       Card[]
+  contacts    Contact[]
+  tags        Tag[]
 
   @@map("organizations")
 }
@@ -242,6 +244,12 @@ model Card {
   /// اللغة الافتراضية للعرض حين لا يحدد الزائر لغة.
   defaultLocale String @default("ar") @map("default_locale")
 
+  /// إعداد نموذج «شارك بياناتك معي»: تفعيله والحقول المعروضة.
+  ///
+  /// عمود JSON لا جدول: الإعداد يُقرأ ويُكتب مع البطاقة دائماً، ويدخل
+  /// اللقطة المنشورة كاملاً — فالصفحة العامة ترسم النموذج بلا استعلام.
+  contactForm Json? @map("contact_form")
+
   avatarFileId String? @map("avatar_file_id") @db.Uuid
   coverFileId  String? @map("cover_file_id") @db.Uuid
   logoFileId   String? @map("logo_file_id") @db.Uuid
@@ -258,6 +266,7 @@ model Card {
   localizations CardLocalization[]
   links         CardLink[]
   publications  CardPublication[]
+  contacts      Contact[]
 
   /// الـslug فريد عالمياً: يظهر في الرابط العام nomiqa.om/<slug>.
   @@unique([slug])
@@ -333,6 +342,240 @@ model CardPublication {
 
   @@index([cardId, publishedAt(sort: Desc)])
   @@map("card_publications")
+}
+
+// ------------------------------------------------------------
+// جهات الاتصال (§8.2 و§8.3 من خارطة الطريق)
+// ------------------------------------------------------------
+
+/// جهة اتصال التقطها نموذج «شارك بياناتك معي» أو أُدخلت يدوياً.
+///
+/// **بيانات شخصية لطرف ثالث لم يسجّل في المنصة.** ولذلك:
+///  - لا تُحفظ إلا بموافقة مسجَّلة في contact_consents داخل نفس الـTransaction.
+///  - لا يظهر أي حقل منها في السجلات ولا في Metadata سجل التدقيق.
+///  - الحذف ناعم كي يبقى أثر الموافقة والسحب قابلاً للإثبات.
+model Contact {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  /// البطاقة التي التُقطت منها. تبقى null للإدخال اليدوي.
+  cardId         String? @map("card_id") @db.Uuid
+
+  fullName         String  @map("full_name")
+  email            String?
+  phone            String?
+  organizationName String? @map("organization_name")
+  jobTitle         String? @map("job_title")
+  /// رسالة الزائر عند الإرسال — نصه هو، لا ملاحظة صاحب البطاقة.
+  message          String?
+
+  /// قيم الحقول الاختيارية التي عرّفها صاحب البطاقة: { key: value }.
+  customFields Json? @map("custom_fields")
+
+  /// card_form | manual | import
+  source String @default("card_form")
+  /// اللغة التي مُلئ بها النموذج — تحدد لغة رسالة الشكر.
+  locale String @default("ar")
+
+  /// new | in_progress | done | archived
+  followUpStatus String    @default("new") @map("follow_up_status")
+  /// تذكير خفيف على مستوى الصف. المهام المجدولة في follow_up_tasks.
+  followUpAt     DateTime? @map("follow_up_at") @db.Timestamptz(6)
+
+  /// مفاتيح مطبَّعة للمطابقة. مخزَّنة لا محسوبة عند الاستعلام: البحث
+  /// عن تكرار يجب أن يستخدم فهرساً، ودالة على العمود تُبطل الفهرس.
+  emailNormalized String? @map("email_normalized")
+  phoneNormalized String? @map("phone_normalized")
+  /// أول جهة اتصال تطابق هذه. **وسم لا دمج**: التقاط مكرر قد يكون
+  /// لقاءً ثانياً حقيقياً، ودمجه آلياً يفقد سياق اللقاء الأول.
+  duplicateOfId   String? @map("duplicate_of_id") @db.Uuid
+
+  capturedAt DateTime  @default(now()) @map("captured_at") @db.Timestamptz(6)
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  card         Card?            @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  consents     ContactConsent[]
+  notes        ContactNote[]
+  tags         ContactTag[]
+  followUps    FollowUpTask[]
+
+  @@index([organizationId, capturedAt(sort: Desc)])
+  @@index([organizationId, followUpStatus, capturedAt(sort: Desc)])
+  @@index([organizationId, cardId, capturedAt(sort: Desc)])
+  @@index([organizationId, emailNormalized])
+  @@index([organizationId, phoneNormalized])
+  @@map("contacts")
+}
+
+/// موافقة الزائر على حفظ بياناته.
+///
+/// جدول مستقل عن contacts لا عمود منطقي: الموافقة **حدث** له وقت ونص
+/// وإصدار ومصدر، وسحبها لاحقاً صف جديد لا تعديل — فيبقى التاريخ كاملاً
+/// وقابلاً للإثبات أمام جهة رقابية (نفس مبدأ user_consents §9.4).
+model ContactConsent {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  contactId      String @map("contact_id") @db.Uuid
+
+  /// contact_storage | marketing
+  purpose         String
+  granted         Boolean
+  /// إصدار النص الذي وافق عليه الزائر — تغيّر النص يستوجب موافقة جديدة.
+  consentTextVersion String @map("consent_text_version")
+  /// public_form | manual | import
+  source          String   @default("public_form")
+  /// للإثبات القانوني فقط ويخضع لسياسة الاحتفاظ.
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, purpose, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("contact_consents")
+}
+
+/// ملاحظة صاحب البطاقة على جهة اتصال.
+model ContactNote {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  contactId      String  @map("contact_id") @db.Uuid
+  authorUserId   String? @map("author_user_id") @db.Uuid
+
+  body      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, createdAt(sort: Desc)])
+  @@map("contact_notes")
+}
+
+/// تصنيف يعرّفه المستخدم داخل مؤسسته.
+model Tag {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  name  String
+  /// لون العرض بصيغة ‎#RRGGBB. اختياري — الواجهة تشتق لوناً ثابتاً منه.
+  color String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts     ContactTag[]
+
+  /// الاسم فريد داخل المؤسسة لا عالمياً — التصنيفات ملك أصحابها.
+  @@unique([organizationId, name])
+  @@map("tags")
+}
+
+model ContactTag {
+  contactId String @map("contact_id") @db.Uuid
+  tagId     String @map("tag_id") @db.Uuid
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+  @@index([tagId])
+  @@map("contact_tags")
+}
+
+/// تذكير متابعة على جهة اتصال.
+model FollowUpTask {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  contactId      String  @map("contact_id") @db.Uuid
+  assignedUserId String? @map("assigned_user_id") @db.Uuid
+
+  title  String
+  dueAt  DateTime @map("due_at") @db.Timestamptz(6)
+  /// open | done | cancelled
+  status String   @default("open")
+
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, dueAt])
+  @@index([contactId, dueAt])
+  @@map("follow_up_tasks")
+}
+
+// ------------------------------------------------------------
+// التحليلات (§8.4 من خارطة الطريق)
+// ------------------------------------------------------------
+
+/// حدث خام على بطاقة عامة.
+///
+/// **لا يُخزَّن عنوان IP ولا User-Agent.** الزائر يُعرَّف بتجزئة يومية
+/// لا رجعة فيها (`visitorHash`) تُحسب في الـAPI ولا تُخزَّن مكوناتها،
+/// فلا يمكن ربط زيارات الشخص نفسه عبر الأيام ولا التعرف عليه.
+/// قاعدة الاحتساب موثّقة في docs/analytics/definitions.md.
+///
+/// جدول عالي الحجم: يُكتب على دفعات من الـWorker لا صفاً صفاً، ولا
+/// يحمل مفاتيح أجنبية إلى card_links — التحقق عند الكتابة يضاعف كلفة
+/// كل صف مقابل قيد لا يحمي شيئاً في بيانات قياس.
+model CardEvent {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  cardId         String @map("card_id") @db.Uuid
+
+  /// view | link_click | vcard_download | qr_scan | form_view | form_submit
+  type   String
+  /// معرّف الرابط للنقرات. بلا مفتاح أجنبي — راجع تعليق النموذج.
+  linkId String? @map("link_id") @db.Uuid
+
+  /// تجزئة الزائر ليوم واحد. ليست معرّفاً دائماً ولا يمكن عكسها.
+  visitorHash  String  @map("visitor_hash")
+  /// لغة العرض وقت الحدث.
+  locale       String?
+  /// نطاق المُحيل فقط. المسار الكامل قد يحمل معرّفات في الاستعلام.
+  referrerHost String? @map("referrer_host")
+  /// mobile | tablet | desktop
+  deviceType   String? @map("device_type")
+
+  occurredAt DateTime @map("occurred_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([cardId, occurredAt(sort: Desc)])
+  @@index([cardId, type, occurredAt(sort: Desc)])
+  @@index([organizationId, occurredAt(sort: Desc)])
+  @@index([occurredAt])
+  @@map("card_events")
+}
+
+/// تجميع مسبق للأحداث.
+///
+/// سببه أن لوحة المستخدم تُفتح كثيراً وتسأل عن أعداد شهر كامل؛ المسح
+/// على الأحداث الخام في كل فتحة يجعل زمن اللوحة تابعاً لحجم المرور.
+///
+/// `dimension` عمود بُعد عام لا nullable: مفتاح أساسي يحوي عموداً
+/// قابلاً لـnull لا يمنع التكرار في PostgreSQL. للنقرات يحمل معرّف
+/// الرابط، ولغيرها سلسلة فارغة.
+model AnalyticsRollup {
+  organizationId String   @map("organization_id") @db.Uuid
+  cardId         String   @map("card_id") @db.Uuid
+  /// hour | day
+  bucket         String
+  bucketStart    DateTime @map("bucket_start") @db.Timestamptz(6)
+  /// نفس أسماء أنواع الأحداث، مضافاً إليها unique_visitor.
+  metric         String
+  dimension      String   @default("")
+  count          Int
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([cardId, bucket, bucketStart, metric, dimension])
+  @@index([organizationId, bucket, bucketStart])
+  @@index([cardId, bucket, metric, bucketStart])
+  @@map("analytics_rollups")
 }
 
 // ------------------------------------------------------------

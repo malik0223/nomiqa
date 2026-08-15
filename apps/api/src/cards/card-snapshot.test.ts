@@ -40,6 +40,7 @@ function source(overrides: Partial<SnapshotSource> = {}): SnapshotSource {
       },
     ],
     media: {},
+    contactForm: null,
     ...overrides,
   };
 }

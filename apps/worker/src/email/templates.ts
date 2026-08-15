@@ -120,6 +120,41 @@ const renderers: Record<EmailTemplate, Record<'ar' | 'en', Renderer>> = {
       text: `${v.contactName ?? 'Someone'} shared their details with you.`,
     }),
   },
+
+  // رسالة الشكر تذهب إلى **زائر ليس مستخدماً في المنصة**، ولذلك:
+  //  - لا رابط إلى لوحة تحكم ولا دعوة لإنشاء حساب: هي تأكيد استلام لا
+  //    قناة تسويق، والزائر وافق على حفظ بياناته لا على مراسلته.
+  //  - لا تُرسل إلا لمن ترك بريده — راجع dispatcher.ts.
+  [EMAIL_TEMPLATES.CONTACT_THANK_YOU]: {
+    ar: (v) => {
+      const owner = escapeHtml(v.ownerName ?? '');
+      const withOwner = owner.length > 0 ? ` مع ${owner}` : '';
+      return {
+        subject: 'شكراً لمشاركة بياناتك',
+        html: layout(
+          'ar',
+          'شكراً لمشاركة بياناتك',
+          `<h1 style="font-size:20px;margin:0 0 16px;">شكراً ${escapeHtml(v.contactName ?? '')}</h1>
+           <p style="line-height:1.7;color:#374151;">وصلت بياناتك${withOwner}. سيتم التواصل معك قريباً.</p>`,
+        ),
+        text: `شكراً ${v.contactName ?? ''}\n\nوصلت بياناتك${v.ownerName ? ` مع ${v.ownerName}` : ''}. سيتم التواصل معك قريباً.`,
+      };
+    },
+    en: (v) => {
+      const owner = escapeHtml(v.ownerName ?? '');
+      const withOwner = owner.length > 0 ? ` with ${owner}` : '';
+      return {
+        subject: 'Thanks for sharing your details',
+        html: layout(
+          'en',
+          'Thanks for sharing your details',
+          `<h1 style="font-size:20px;margin:0 0 16px;">Thank you ${escapeHtml(v.contactName ?? '')}</h1>
+           <p style="line-height:1.7;color:#374151;">Your details were shared${withOwner}. You will be contacted soon.</p>`,
+        ),
+        text: `Thank you ${v.contactName ?? ''}\n\nYour details were shared${v.ownerName ? ` with ${v.ownerName}` : ''}. You will be contacted soon.`,
+      };
+    },
+  },
 };
 
 export function renderEmail(

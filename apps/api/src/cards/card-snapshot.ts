@@ -1,11 +1,13 @@
 import type {
+  CardContactForm,
   CardContent,
   CardLinkData,
   CardSection,
   CardSnapshot,
   CardTheme,
+  ContactFormFieldKey,
 } from '@nomiqa/contracts';
-import { CARD_SECTIONS } from '@nomiqa/contracts';
+import { CARD_SECTIONS, CONTACT_FORM_FIELDS, DEFAULT_CONTACT_FORM } from '@nomiqa/contracts';
 
 /**
  * صفوف البطاقة كما تخرج من قاعدة البيانات، بلا أنواع Prisma.
@@ -46,6 +48,7 @@ export interface SnapshotSource {
     coverUrl?: string | null;
     logoUrl?: string | null;
   };
+  contactForm: unknown;
 }
 
 /**
@@ -100,6 +103,7 @@ export function buildSnapshot(source: SnapshotSource): CardSnapshot {
       coverUrl: source.media.coverUrl ?? null,
       logoUrl: source.media.logoUrl ?? null,
     },
+    contactForm: parseContactForm(source.contactForm),
   };
 }
 
@@ -149,6 +153,56 @@ export function parseTheme(value: unknown): CardTheme {
   }
 
   return theme;
+}
+
+/**
+ * إعداد نموذج التواصل المخزَّن.
+ *
+ * يُقرأ بتساهل ويُكتب بتشدد: العمود قد يحمل `null` لبطاقة أُنشئت قبل
+ * وجود الميزة، أو إعداداً كتبه إصدار أقدم من التطبيق. القيمة الافتراضية
+ * هي نموذج **معطَّل** — الميزة تُفعَّل بقرار صاحب البطاقة لا بالغياب.
+ */
+export function parseContactForm(value: unknown): CardContactForm {
+  if (typeof value !== 'object' || value === null) {
+    return { ...DEFAULT_CONTACT_FORM };
+  }
+
+  const raw = value as Record<string, unknown>;
+  const known = new Set<string>(CONTACT_FORM_FIELDS);
+  const seenFields = new Set<string>();
+  const seenCustom = new Set<string>();
+
+  const fields = Array.isArray(raw.fields)
+    ? raw.fields.flatMap((entry): CardContactForm['fields'] => {
+        if (typeof entry !== 'object' || entry === null) return [];
+        const field = entry as Record<string, unknown>;
+        if (typeof field.key !== 'string' || !known.has(field.key) || seenFields.has(field.key)) {
+          return [];
+        }
+        seenFields.add(field.key);
+        return [{ key: field.key as ContactFormFieldKey, required: field.required === true }];
+      })
+    : [];
+
+  const customFields = Array.isArray(raw.customFields)
+    ? raw.customFields.flatMap((entry): CardContactForm['customFields'] => {
+        if (typeof entry !== 'object' || entry === null) return [];
+        const field = entry as Record<string, unknown>;
+        if (typeof field.key !== 'string' || typeof field.label !== 'string') return [];
+        if (seenCustom.has(field.key)) return [];
+        seenCustom.add(field.key);
+        return [
+          {
+            key: field.key,
+            label: field.label,
+            labelEn: typeof field.labelEn === 'string' ? field.labelEn : null,
+            required: field.required === true,
+          },
+        ];
+      })
+    : [];
+
+  return { enabled: raw.enabled === true, fields, customFields };
 }
 
 /** ترتيب الأقسام المخزَّن. القيم غير المعروفة تُسقط لا تُمرَّر للعرض. */

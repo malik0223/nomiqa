@@ -167,6 +167,18 @@ async function seedDemoCard(): Promise<void> {
       defaultLocale: 'ar',
       theme: { primaryColor: '#0F766E', borderRadius: 'large', colorScheme: 'system' },
       sectionOrder: ['identity', 'actions', 'links'],
+      // النموذج مفعَّل في البطاقة التجريبية وحدها: مساره الوحيد للاختبار
+      // محلياً وفي Playwright هو صفحة عامة، ولا يمكن فتحها بلا نموذج منشور.
+      contactForm: {
+        enabled: true,
+        fields: [
+          { key: 'email', required: true },
+          { key: 'phone', required: false },
+          { key: 'organizationName', required: false },
+          { key: 'message', required: false },
+        ],
+        customFields: [],
+      },
       publishedAt: new Date(),
       localizations: {
         create: [
@@ -244,6 +256,7 @@ async function seedDemoCard(): Promise<void> {
             isPrimary: link.isPrimary,
           })),
         media: { avatarUrl: null, coverUrl: null, logoUrl: null },
+        contactForm: card.contactForm,
       },
     },
   });

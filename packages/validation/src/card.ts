@@ -1,5 +1,6 @@
 import { CARD_LINK_TYPES, CARD_SECTIONS, SOCIAL_PLATFORMS } from '@nomiqa/contracts';
 import { z } from 'zod';
+import { cardContactFormSchema } from './contact.js';
 import { emailSchema, localeSchema, phoneSchema, slugSchema, uuidSchema } from './primitives.js';
 
 /**
@@ -212,6 +213,7 @@ export const cardUpdateFieldsSchema = z
       )
       .optional(),
     links: z.array(cardLinkSchema).max(30, 'الحد الأقصى 30 رابطاً').optional(),
+    contactForm: cardContactFormSchema.optional(),
     avatarFileId: uuidSchema.nullable().optional(),
     coverFileId: uuidSchema.nullable().optional(),
     logoFileId: uuidSchema.nullable().optional(),

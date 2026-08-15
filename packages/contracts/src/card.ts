@@ -72,6 +72,59 @@ export interface CardLinkData {
 }
 
 /**
+ * حقول نموذج «شارك بياناتك معي» المعروفة مسبقاً.
+ *
+ * الاسم ليس منها: مطلوب دائماً ولا يُعطَّل — جهة اتصال بلا اسم صف
+ * لا يستطيع صاحب البطاقة التعرف عليه لاحقاً.
+ */
+export const CONTACT_FORM_FIELDS = [
+  'email',
+  'phone',
+  'organizationName',
+  'jobTitle',
+  'message',
+] as const;
+export type ContactFormFieldKey = (typeof CONTACT_FORM_FIELDS)[number];
+
+export interface ContactFormField {
+  key: ContactFormFieldKey;
+  required: boolean;
+}
+
+/** حقل نصي حر يعرّفه صاحب البطاقة (§8.2: حقول اختيارية قابلة للتخصيص). */
+export interface ContactFormCustomField {
+  /** معرّف ثابت داخل البطاقة. يُستخدم مفتاحاً في `customFields`. */
+  key: string;
+  label: string;
+  labelEn?: string | null;
+  required: boolean;
+}
+
+/**
+ * إعداد نموذج التواصل.
+ *
+ * يدخل اللقطة المنشورة كاملاً: الصفحة العامة ترسم النموذج من اللقطة
+ * وحدها، فلا يتغير شكله للزائر بينما صاحبه يعدّل مسودته.
+ */
+export interface CardContactForm {
+  enabled: boolean;
+  /** الحقول المعروفة المعروضة إضافةً إلى الاسم. */
+  fields: ContactFormField[];
+  customFields: ContactFormCustomField[];
+}
+
+export const DEFAULT_CONTACT_FORM: CardContactForm = {
+  enabled: false,
+  fields: [
+    { key: 'email', required: true },
+    { key: 'phone', required: false },
+    { key: 'organizationName', required: false },
+    { key: 'message', required: false },
+  ],
+  customFields: [],
+};
+
+/**
  * اللقطة المنشورة.
  *
  * كل ما تحتاجه الصفحة العامة للعرض، دون أي استعلام إضافي — وهو ما
@@ -92,6 +145,13 @@ export interface CardSnapshot {
     coverUrl?: string | null;
     logoUrl?: string | null;
   };
+  /**
+   * إعداد نموذج التواصل وقت النشر.
+   *
+   * اختياري في النوع لا في المعنى: لقطات المرحلة 2 نُشرت قبل وجود
+   * النموذج، وقراءتها يجب أن تبقى ممكنة بلا إعادة نشر.
+   */
+  contactForm?: CardContactForm;
 }
 
 /** ملفات الوسائط كما يعرفها المحرر: معرّفات لا روابط. */
@@ -114,6 +174,7 @@ export interface CardDetail {
   revision: number;
   content: CardContent[];
   links: CardLinkData[];
+  contactForm: CardContactForm;
   media: CardMediaIds;
   /**
    * روابط معاينة موقّعة قصيرة العمر للصور في المحرر.

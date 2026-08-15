@@ -49,6 +49,17 @@ export const storageEnvSchema = z.object({
     .transform((value) => value === 'true'),
 });
 
+/**
+ * سرّ تجزئة الزائر.
+ *
+ * ليس اختيارياً في الإنتاج: بدونه لا يمكن تمييز زائر عن آخر إلا
+ * بتخزين عنوانه — وهو ما لا نفعله. تغييره يفصل القياس قبله عمّا بعده
+ * (تصير كل الزيارات «جديدة» ليوم واحد)، فيُدار كسرّ ثابت لا كإعداد.
+ */
+export const analyticsEnvSchema = z.object({
+  ANALYTICS_VISITOR_SECRET: z.string().min(16, 'السرّ قصير جداً').optional(),
+});
+
 export type BaseEnv = z.infer<typeof baseEnvSchema>;
 export type Auth0ApiEnv = z.infer<typeof auth0ApiEnvSchema>;
 
