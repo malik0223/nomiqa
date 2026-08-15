@@ -28,6 +28,9 @@ export async function resetData(): Promise<void> {
       outbox_events, audit_logs, membership_roles, file_objects,
       notification_deliveries, user_consents, data_subject_requests,
       platform_audit_logs, platform_admins, feature_flag_overrides,
+      analytics_rollups, card_events,
+      follow_up_tasks, contact_tags, contact_notes, contact_consents,
+      contacts, tags,
       card_publications, card_links, card_localizations, cards,
       organization_memberships, organizations, users
     RESTART IDENTITY CASCADE

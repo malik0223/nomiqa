@@ -20,7 +20,101 @@
     "orgSlug": "Slug",
     "roles": "Roles",
     "permissions": "Permissions",
-    "myCards": "My cards"
+    "myCards": "My cards",
+    "analyticsUnavailable": "Analytics could not be loaded right now.",
+    "updatedAt": "Figures last updated: {time}",
+    "activity": "Activity",
+    "noActivity": "No visits in this period yet.",
+    "recentContacts": "Recent contacts",
+    "topLinks": "Most used links",
+    "noLinkClicks": "No link clicks yet.",
+    "byCard": "Performance by card",
+    "cardSummary": "{views} views · {contacts} contacts",
+    "ranges": {
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days"
+    },
+    "metrics": {
+      "views": "Views",
+      "uniqueVisitors": "Unique visitors",
+      "linkClicks": "Link clicks",
+      "vcardDownloads": "vCard downloads",
+      "formSubmits": "New contacts",
+      "conversionRate": "Conversion rate"
+    }
+  },
+  "contacts": {
+    "title": "Contacts",
+    "total": "{count} contacts",
+    "empty": "No contacts yet.",
+    "export": "Export CSV",
+    "duplicate": "Duplicate",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {total}",
+    "delete": "Delete contact",
+    "deleteConfirm": "Confirm deletion",
+    "stats": {
+      "new": "New",
+      "inProgress": "In progress",
+      "last7Days": "Last 7 days",
+      "dueFollowUps": "Due reminders"
+    },
+    "status": {
+      "new": "New",
+      "in_progress": "In progress",
+      "done": "Done",
+      "archived": "Archived"
+    },
+    "sources": {
+      "card_form": "Card form",
+      "manual": "Manual entry",
+      "import": "Import"
+    },
+    "filters": {
+      "search": "Search by name, email or phone",
+      "allCards": "All cards",
+      "allTags": "All tags",
+      "allStatuses": "All statuses",
+      "duplicatesOnly": "Duplicates only",
+      "apply": "Apply",
+      "reset": "Reset"
+    },
+    "fields": {
+      "email": "Email",
+      "phone": "Phone",
+      "source": "Source",
+      "capturedAt": "Captured at",
+      "card": "Card",
+      "message": "Visitor message",
+      "status": "Follow-up status"
+    },
+    "consents": {
+      "title": "Consent record",
+      "contact_storage": "Storing contact details",
+      "marketing": "Marketing messages",
+      "granted": "Granted",
+      "refused": "Not granted"
+    },
+    "tags": {
+      "title": "Tags",
+      "create": "No tags yet."
+    },
+    "notes": {
+      "title": "Notes",
+      "placeholder": "Write what you want to remember about this meeting...",
+      "add": "Add note",
+      "remove": "Delete"
+    },
+    "followUps": {
+      "title": "Follow-up reminders",
+      "titleField": "What do you want to do?",
+      "dueField": "Due",
+      "add": "Add reminder",
+      "complete": "Done",
+      "done": "Completed"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -128,6 +222,26 @@
       "badType": "Unsupported image type.",
       "tooLarge": "Larger than {mb} MB.",
       "uploadFailed": "Upload failed. Please try again."
+    },
+    "contactForm": {
+      "title": "\"Share your details\" form",
+      "hint": "Shown under the public card; whoever shares their details lands in your contacts list.",
+      "enable": "Enable the form",
+      "fields": "Visible fields",
+      "required": "Required",
+      "needsChannel": "Add email or phone — without either you cannot reply to whoever writes to you.",
+      "customFields": "Custom fields",
+      "customLabel": "Field label in Arabic",
+      "customLabelEn": "Label in English",
+      "addField": "Add field",
+      "removeField": "Remove",
+      "field": {
+        "email": "Email",
+        "phone": "Phone",
+        "organizationName": "Organization",
+        "jobTitle": "Job title",
+        "message": "Message"
+      }
     },
     "appearance": {
       "title": "Appearance",

@@ -97,6 +97,10 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
                 href={toHref(link)}
                 // الروابط الخارجية فقط تحتاج noopener؛ tel/mailto لا تفتح نافذة.
                 {...externalAttributes(link.type)}
+                // سمة بيانات لا مستمع: المحرك خادمي بالكامل، والقياس
+                // يلتقط النقرة بمستمع واحد مفوَّض على المستند. إضافة
+                // onClick هنا كانت ستحوّل كل البطاقة إلى مكوّن عميل.
+                data-link-id={link.id}
                 className={cn(
                   'block px-5 py-3 text-center text-sm font-medium text-white transition-opacity hover:opacity-90',
                   radius,
@@ -118,6 +122,7 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
                 key={link.id}
                 href={toHref(link)}
                 {...externalAttributes(link.type)}
+                data-link-id={link.id}
                 className={cn(
                   'flex items-center justify-between gap-3 border border-neutral-200 px-4 py-3 text-sm transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900',
                   radius,

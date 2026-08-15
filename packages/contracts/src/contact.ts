@@ -31,6 +31,19 @@ export type ContactConsentPurpose = (typeof CONTACT_CONSENT_PURPOSES)[number];
  */
 export const CONTACT_CONSENT_VERSION = '2026-08-16';
 
+/**
+ * كل الإصدارات التي ما زالت مقبولة عند الإرسال.
+ *
+ * الصفحة العامة مخزَّنة مؤقتاً لدى الزائر وفي الـCDN، فقد يصل إرسال
+ * يحمل إصداراً سابقاً بعد ساعة من تحديث النص — رفضه يفقد جهة اتصال
+ * حقيقية. لكن القائمة **مغلقة**: قيمة لا نعرفها تُرفض، وإلا صار
+ * السجل القانوني يحمل نصاً يكتبه المرسِل بنفسه.
+ *
+ * عند رفع الإصدار: أضف الجديد هنا، واحذف القديم بعد انقضاء أطول
+ * مدة تخزين مؤقت للصفحة العامة.
+ */
+export const ACCEPTED_CONTACT_CONSENT_VERSIONS: readonly string[] = [CONTACT_CONSENT_VERSION];
+
 export const FOLLOW_UP_TASK_STATUSES = ['open', 'done', 'cancelled'] as const;
 export type FollowUpTaskStatus = (typeof FOLLOW_UP_TASK_STATUSES)[number];
 

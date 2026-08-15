@@ -16,6 +16,7 @@ import {
   saveCardAction,
   unpublishCardAction,
 } from '../actions';
+import { ContactFormEditor } from './contact-form-editor';
 import { ImageField } from './image-field';
 import { LinksEditor } from './links-editor';
 import { PreviewPane } from './preview-pane';
@@ -331,6 +332,9 @@ export function CardEditor({
 
           {/* ---------- الروابط ---------- */}
           <LinksEditor control={control} register={register} watchedLinks={values.links} />
+
+          {/* ---------- نموذج التواصل ---------- */}
+          <ContactFormEditor values={values.contactForm} register={register} setValue={setValue} />
 
           {/* ---------- الصور ---------- */}
           <section className="space-y-4">

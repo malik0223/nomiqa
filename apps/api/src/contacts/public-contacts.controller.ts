@@ -1,6 +1,10 @@
 import { Body, Controller, HttpCode, Param, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { contactSubmissionSchema, slugSchema, type ContactSubmissionInput } from '@nomiqa/validation';
+import {
+  contactSubmissionSchema,
+  slugSchema,
+  type ContactSubmissionInput,
+} from '@nomiqa/validation';
 import type { Request } from 'express';
 import { Public } from '../auth/public.decorator.js';
 import { RateLimit } from '../common/rate-limit.decorator.js';

@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   ContactConsentData,
   ContactConsentPurpose,
@@ -53,10 +58,7 @@ export class ContactsService {
   // قراءة
   // ---------------------------------------------------------------
 
-  async list(
-    organizationId: string,
-    query: ContactQueryInput,
-  ): Promise<Paginated<ContactSummary>> {
+  async list(organizationId: string, query: ContactQueryInput): Promise<Paginated<ContactSummary>> {
     const where = buildWhere(query);
 
     const { rows, total } = await withRlsContext(this.prisma, { organizationId }, async (tx) => ({
@@ -108,27 +110,23 @@ export class ContactsService {
       locale: contact.locale,
       customFields: parseCustomFields(contact.customFields),
       duplicateOfId: contact.duplicateOfId,
-      notes: contact.notes.map(
-        (note): ContactNoteData => ({
-          id: note.id,
-          body: note.body,
-          authorUserId: note.authorUserId,
-          authorName: note.authorUserId ? (authorNames.get(note.authorUserId) ?? null) : null,
-          createdAt: note.createdAt.toISOString(),
-          updatedAt: note.updatedAt.toISOString(),
-        }),
-      ),
+      notes: contact.notes.map((note): ContactNoteData => ({
+        id: note.id,
+        body: note.body,
+        authorUserId: note.authorUserId,
+        authorName: note.authorUserId ? (authorNames.get(note.authorUserId) ?? null) : null,
+        createdAt: note.createdAt.toISOString(),
+        updatedAt: note.updatedAt.toISOString(),
+      })),
       followUps: contact.followUps.map(toFollowUp),
-      consents: contact.consents.map(
-        (consent): ContactConsentData => ({
-          id: consent.id,
-          purpose: consent.purpose as ContactConsentPurpose,
-          granted: consent.granted,
-          consentTextVersion: consent.consentTextVersion,
-          source: consent.source,
-          createdAt: consent.createdAt.toISOString(),
-        }),
-      ),
+      consents: contact.consents.map((consent): ContactConsentData => ({
+        id: consent.id,
+        purpose: consent.purpose as ContactConsentPurpose,
+        granted: consent.granted,
+        consentTextVersion: consent.consentTextVersion,
+        source: consent.source,
+        createdAt: consent.createdAt.toISOString(),
+      })),
       updatedAt: contact.updatedAt.toISOString(),
     };
   }
@@ -588,9 +586,7 @@ export class ContactsService {
    * المعرّفات المذكورة في الملاحظات ونُرجع الاسم وحده — لا بريد ولا
    * أي حقل آخر يخص مستخدماً قد لا يكون عضواً في هذه المؤسسة اليوم.
    */
-  private async resolveAuthorNames(
-    ids: Array<string | null>,
-  ): Promise<Map<string, string | null>> {
+  private async resolveAuthorNames(ids: Array<string | null>): Promise<Map<string, string | null>> {
     const unique = [...new Set(ids.filter((id): id is string => id !== null))];
     if (unique.length === 0) return new Map();
 

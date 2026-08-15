@@ -20,7 +20,101 @@
     "orgSlug": "الرابط",
     "roles": "الأدوار",
     "permissions": "عدد الصلاحيات",
-    "myCards": "بطاقاتي"
+    "myCards": "بطاقاتي",
+    "analyticsUnavailable": "تعذّر تحميل التحليلات الآن.",
+    "updatedAt": "آخر تحديث للأرقام: {time}",
+    "activity": "النشاط",
+    "noActivity": "لا زيارات في هذه الفترة بعد.",
+    "recentContacts": "أحدث جهات الاتصال",
+    "topLinks": "أكثر الروابط استخداماً",
+    "noLinkClicks": "لا نقرات على الروابط بعد.",
+    "byCard": "الأداء حسب البطاقة",
+    "cardSummary": "{views} مشاهدة · {contacts} جهة اتصال",
+    "ranges": {
+      "7d": "٧ أيام",
+      "30d": "٣٠ يوماً",
+      "90d": "٩٠ يوماً"
+    },
+    "metrics": {
+      "views": "المشاهدات",
+      "uniqueVisitors": "الزوار الفريدون",
+      "linkClicks": "نقرات الروابط",
+      "vcardDownloads": "تنزيلات vCard",
+      "formSubmits": "جهات اتصال جديدة",
+      "conversionRate": "معدل التحويل"
+    }
+  },
+  "contacts": {
+    "title": "جهات الاتصال",
+    "total": "{count} جهة اتصال",
+    "empty": "لا توجد جهات اتصال بعد.",
+    "export": "تصدير CSV",
+    "duplicate": "مكررة",
+    "previous": "السابق",
+    "next": "التالي",
+    "pageOf": "صفحة {page} من {total}",
+    "delete": "حذف جهة الاتصال",
+    "deleteConfirm": "تأكيد الحذف",
+    "stats": {
+      "new": "جديدة",
+      "inProgress": "قيد المتابعة",
+      "last7Days": "آخر ٧ أيام",
+      "dueFollowUps": "تذكيرات مستحقة"
+    },
+    "status": {
+      "new": "جديدة",
+      "in_progress": "قيد المتابعة",
+      "done": "منتهية",
+      "archived": "مؤرشفة"
+    },
+    "sources": {
+      "card_form": "نموذج البطاقة",
+      "manual": "إدخال يدوي",
+      "import": "استيراد"
+    },
+    "filters": {
+      "search": "بحث بالاسم أو البريد أو الهاتف",
+      "allCards": "كل البطاقات",
+      "allTags": "كل التصنيفات",
+      "allStatuses": "كل الحالات",
+      "duplicatesOnly": "المكررة فقط",
+      "apply": "تطبيق",
+      "reset": "إعادة تعيين"
+    },
+    "fields": {
+      "email": "البريد الإلكتروني",
+      "phone": "رقم الهاتف",
+      "source": "المصدر",
+      "capturedAt": "تاريخ الالتقاط",
+      "card": "البطاقة",
+      "message": "رسالة الزائر",
+      "status": "حالة المتابعة"
+    },
+    "consents": {
+      "title": "سجل الموافقة",
+      "contact_storage": "حفظ بيانات التواصل",
+      "marketing": "رسائل تسويقية",
+      "granted": "موافق",
+      "refused": "غير موافق"
+    },
+    "tags": {
+      "title": "التصنيفات",
+      "create": "لا توجد تصنيفات بعد."
+    },
+    "notes": {
+      "title": "الملاحظات",
+      "placeholder": "اكتب ما تريد تذكّره عن هذا اللقاء...",
+      "add": "إضافة ملاحظة",
+      "remove": "حذف"
+    },
+    "followUps": {
+      "title": "تذكيرات المتابعة",
+      "titleField": "ماذا تريد أن تفعل؟",
+      "dueField": "الموعد",
+      "add": "إضافة تذكير",
+      "complete": "تم",
+      "done": "منتهٍ"
+    }
   },
   "settings": {
     "title": "الإعدادات",
@@ -128,6 +222,26 @@
       "badType": "نوع الصورة غير مدعوم.",
       "tooLarge": "الحجم يتجاوز {mb} ميغابايت.",
       "uploadFailed": "تعذّر رفع الصورة. حاول مرة أخرى."
+    },
+    "contactForm": {
+      "title": "نموذج «شارك بياناتك معي»",
+      "hint": "يظهر أسفل البطاقة العامة، ويحفظ من يشارك بياناته في قائمة جهات الاتصال.",
+      "enable": "تفعيل النموذج",
+      "fields": "الحقول المعروضة",
+      "required": "مطلوب",
+      "needsChannel": "أضف البريد الإلكتروني أو الهاتف — بدونهما لا تستطيع الرد على من يراسلك.",
+      "customFields": "حقول مخصصة",
+      "customLabel": "عنوان الحقل بالعربية",
+      "customLabelEn": "العنوان بالإنجليزية",
+      "addField": "إضافة حقل",
+      "removeField": "حذف",
+      "field": {
+        "email": "البريد الإلكتروني",
+        "phone": "رقم الهاتف",
+        "organizationName": "جهة العمل",
+        "jobTitle": "المسمى الوظيفي",
+        "message": "رسالة"
+      }
     },
     "appearance": {
       "title": "المظهر",

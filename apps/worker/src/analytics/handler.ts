@@ -88,8 +88,9 @@ export async function handleAnalyticsRollup(): Promise<void> {
  * زائر ونطاق مُحيل ونوع جهاز، ولا يضيف شيئاً بعد تجميعه.
  */
 export async function handleAnalyticsPurge(): Promise<void> {
+  // `::int` إلزامي — راجع التعليق في outbox/dispatcher.ts
   const rows = await prisma.$queryRaw<Array<{ analytics_purge_events: number }>>`
-    SELECT analytics_purge_events(${RAW_EVENT_RETENTION_DAYS})
+    SELECT analytics_purge_events(${RAW_EVENT_RETENTION_DAYS}::int)
   `;
 
   const removed = rows[0]?.analytics_purge_events ?? 0;

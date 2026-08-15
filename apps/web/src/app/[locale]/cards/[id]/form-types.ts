@@ -1,10 +1,13 @@
 import type {
+  CardContactForm,
   CardDetail,
   CardLinkType,
   CardSection,
   CardSnapshot,
+  ContactFormFieldKey,
   TemplateSummary,
 } from '@nomiqa/contracts';
+import { CONTACT_FORM_FIELDS } from '@nomiqa/contracts';
 import type { CardUpdateFieldsInput } from '@nomiqa/validation';
 
 /**
@@ -26,9 +29,30 @@ export interface CardFormValues {
   sectionOrder: CardSection[];
   content: CardContentValues[];
   links: CardLinkValues[];
+  contactForm: ContactFormValues;
   avatarFileId: string | null;
   coverFileId: string | null;
   logoFileId: string | null;
+}
+
+/**
+ * إعداد النموذج في المحرر.
+ *
+ * سجلّ مفهرس بالمفتاح لا مصفوفة كما في العقد: مربع اختيار في الواجهة
+ * يحتاج قيمة لكل حقل معروف — بما فيها المعطّلة — بينما العقد يحمل
+ * المفعَّلة وحدها. التحويل بين الشكلين يقع في `toFormValues`/`toPayload`.
+ */
+export interface ContactFormValues {
+  enabled: boolean;
+  fields: Record<ContactFormFieldKey, { enabled: boolean; required: boolean }>;
+  customFields: ContactCustomFieldValues[];
+}
+
+export interface ContactCustomFieldValues {
+  key: string;
+  label: string;
+  labelEn: string;
+  required: boolean;
 }
 
 export interface CardContentValues {
@@ -93,9 +117,52 @@ export function toFormValues(card: CardDetail): CardFormValues {
         isVisible: link.isVisible,
         isPrimary: link.isPrimary,
       })),
+    contactForm: toContactFormValues(card.contactForm),
     avatarFileId: card.media.avatarFileId,
     coverFileId: card.media.coverFileId,
     logoFileId: card.media.logoFileId,
+  };
+}
+
+function toContactFormValues(form: CardContactForm): ContactFormValues {
+  const configured = new Map(form.fields.map((field) => [field.key, field]));
+
+  const fields = Object.fromEntries(
+    CONTACT_FORM_FIELDS.map((key) => {
+      const field = configured.get(key);
+      return [key, { enabled: field !== undefined, required: field?.required ?? false }];
+    }),
+  ) as ContactFormValues['fields'];
+
+  return {
+    enabled: form.enabled,
+    fields,
+    customFields: form.customFields.map((field) => ({
+      key: field.key,
+      label: field.label,
+      labelEn: field.labelEn ?? '',
+      required: field.required,
+    })),
+  };
+}
+
+function fromContactFormValues(values: ContactFormValues): CardContactForm {
+  return {
+    enabled: values.enabled,
+    fields: CONTACT_FORM_FIELDS.filter((key) => values.fields[key]?.enabled).map((key) => ({
+      key,
+      required: values.fields[key]?.required ?? false,
+    })),
+    // الحقل بلا عنوان لم يُكمله المستخدم بعد؛ إرساله كان سينتج حقلاً
+    // بلا اسم في نموذج يراه الزوار.
+    customFields: values.customFields
+      .filter((field) => field.label.trim().length > 0)
+      .map((field) => ({
+        key: field.key,
+        label: field.label.trim(),
+        labelEn: field.labelEn.trim() || null,
+        required: field.required,
+      })),
   };
 }
 
@@ -144,6 +211,7 @@ export function toPayload(values: CardFormValues): CardUpdateFieldsInput {
         isVisible: link.isVisible,
         isPrimary: link.isPrimary,
       })),
+    contactForm: fromContactFormValues(values.contactForm),
     avatarFileId: values.avatarFileId,
     coverFileId: values.coverFileId,
     logoFileId: values.logoFileId,
@@ -206,5 +274,6 @@ export function toPreviewSnapshot(
       coverUrl: mediaPreview.coverUrl ?? null,
       logoUrl: mediaPreview.logoUrl ?? null,
     },
+    contactForm: fromContactFormValues(values.contactForm),
   };
 }

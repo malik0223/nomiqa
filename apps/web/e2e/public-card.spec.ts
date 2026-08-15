@@ -68,7 +68,10 @@ test.describe('البطاقة العامة', () => {
     // نولّد الرمز المتوقع من الرابط الثابت ونقارنه بالناتج: تطابقهما
     // يثبت أن المشفَّر هو الرابط لا بيانات البطاقة — وهو ما يجعل تعديل
     // البطاقة لا يستوجب إعادة طباعة أي رمز.
-    const expected = await QRCode.toString(`${baseURL}/${SLUG}`, {
+    //
+    // `?src=qr` معامل قياس يميّز المسح عن فتح رابط مُشارَك. **المسار
+    // نفسه لم يتغير**، وهو ما تنص عليه القاعدة §7.4.
+    const expected = await QRCode.toString(`${baseURL}/${SLUG}?src=qr`, {
       errorCorrectionLevel: 'M',
       margin: 2,
       width: 512,

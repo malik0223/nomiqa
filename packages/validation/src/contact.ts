@@ -189,7 +189,9 @@ export const contactUpdateSchema = z
       .optional(),
     organizationName: optionalText(160),
     jobTitle: optionalText(120),
-    followUpStatus: z.enum(CONTACT_FOLLOW_UP_STATUSES, { message: 'حالة متابعة غير معروفة' }).optional(),
+    followUpStatus: z
+      .enum(CONTACT_FOLLOW_UP_STATUSES, { message: 'حالة متابعة غير معروفة' })
+      .optional(),
     /** موعد تذكير. `null` يلغيه. */
     followUpAt: z.string().datetime({ message: 'صيغة تاريخ غير صحيحة' }).nullable().optional(),
     /** استبدال كامل لتصنيفات جهة الاتصال. */

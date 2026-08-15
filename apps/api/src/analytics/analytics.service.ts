@@ -38,10 +38,7 @@ const TOP_LINKS_LIMIT = 8;
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async overview(
-    organizationId: string,
-    query: AnalyticsQueryInput,
-  ): Promise<AnalyticsOverview> {
+  async overview(organizationId: string, query: AnalyticsQueryInput): Promise<AnalyticsOverview> {
     const days = ANALYTICS_RANGE_DAYS[query.range];
     const to = new Date();
     const from = startOfUtcDay(new Date(to.getTime() - (days - 1) * 24 * 3_600_000));
@@ -200,7 +197,10 @@ export class AnalyticsService {
     rollups: RollupRow[],
     cardIds: string[],
   ): Promise<AnalyticsCardBreakdown[]> {
-    const totals = new Map<string, { views: number; uniqueVisitors: number; formSubmits: number }>();
+    const totals = new Map<
+      string,
+      { views: number; uniqueVisitors: number; formSubmits: number }
+    >();
 
     for (const row of rollups) {
       const entry = totals.get(row.cardId) ?? { views: 0, uniqueVisitors: 0, formSubmits: 0 };

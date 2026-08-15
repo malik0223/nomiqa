@@ -33,8 +33,10 @@ interface ClaimedEvent {
  * نسخ من الـWorker معاً آمن: لا يلتقط اثنان الحدث نفسه.
  */
 export async function dispatchOutbox(): Promise<number> {
+  // `::int` إلزامي: Prisma ترسل أعداد JavaScript كـbigint، ولا يطابق
+  // ذلك دالة معرّفة بـint فيفشل الاستدعاء بـ«لا دالة بهذا الاسم».
   const events = await prisma.$queryRaw<ClaimedEvent[]>`
-    SELECT * FROM outbox_claim_batch(${BATCH_SIZE})
+    SELECT * FROM outbox_claim_batch(${BATCH_SIZE}::int)
   `;
 
   for (const event of events) {
@@ -47,7 +49,7 @@ export async function dispatchOutbox(): Promise<number> {
       // والتأجيل الأُسّي يعيد هذا وحده لاحقاً.
       logger.error({ eventId: event.id, type: event.event_type, error: message }, 'فشل حدث Outbox');
       await prisma.$executeRaw`
-        SELECT outbox_mark_failed(${event.id}::uuid, ${message}, ${MAX_ATTEMPTS})
+        SELECT outbox_mark_failed(${event.id}::uuid, ${message}, ${MAX_ATTEMPTS}::int)
       `;
     }
   }
@@ -90,7 +92,9 @@ async function handleContactCaptured(event: ClaimedEvent): Promise<void> {
         fullName: true,
         email: true,
         locale: true,
-        card: { select: { slug: true, localizations: { select: { locale: true, fullName: true } } } },
+        card: {
+          select: { slug: true, localizations: { select: { locale: true, fullName: true } } },
+        },
       },
     }),
   );

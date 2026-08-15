@@ -33,7 +33,13 @@ export async function GET(
   const format = url.searchParams.get('format') === 'png' ? 'png' : 'svg';
   const size = clamp(Number(url.searchParams.get('size') ?? 512), 128, 2048);
 
-  const target = publicCardUrl(parsed.data);
+  // `src=qr` هو ما يميّز مسحاً من رمز مطبوع عن فتح رابط مُشارَك —
+  // لا سبيل آخر لقياسه، فالمسح يفتح متصفحاً عادياً بلا أثر يميّزه.
+  //
+  // المقطع نفسه لا يتغير: القاعدة §7.4 تخص **مسار** البطاقة، وهو ثابت.
+  // ولو حُذف هذا المعامل لاحقاً لبقيت كل الرموز المطبوعة تعمل، فالصفحة
+  // تتجاهل ما لا تعرفه.
+  const target = `${publicCardUrl(parsed.data)}?src=qr`;
 
   // مستوى تصحيح الأخطاء M: يتحمّل تلف ربع الرمز تقريباً، وهو الحد
   // العملي لرمز يُطبع على ورق ويُصوَّر بكاميرا هاتف في إضاءة متغيرة.

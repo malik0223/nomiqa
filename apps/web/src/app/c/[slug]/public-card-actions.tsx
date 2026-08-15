@@ -83,6 +83,8 @@ export function PublicCardActions({
         href={`/c/${slug}/vcard?lang=${locale}`}
         // download يجعل الهاتف يفتح بطاقة الاتصال بدل عرض النص.
         download={`${slug}.vcf`}
+        // يلتقطه المستمع المفوَّض في AnalyticsBeacon.
+        data-track="vcard"
         className="block rounded-xl border border-neutral-300 px-5 py-3 text-center text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
       >
         {text.save}

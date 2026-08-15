@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
-  CONTACT_CONSENT_VERSION,
+  ACCEPTED_CONTACT_CONSENT_VERSIONS,
   OUTBOX_EVENT_TYPES,
   type CardContactForm,
   type ContactSubmissionResult,
@@ -61,6 +61,17 @@ export class ContactCaptureService {
       return accepted;
     }
 
+    // إصدار نص الموافقة يأتي من العميل لأن الصفحة مخزَّنة مؤقتاً وقد
+    // تعرض نصاً سابقاً؛ لكن القائمة مغلقة، فلا يستطيع مرسِلٌ أن يكتب
+    // في السجل القانوني إصداراً من عنده.
+    if (!ACCEPTED_CONTACT_CONSENT_VERSIONS.includes(input.consentTextVersion)) {
+      throw new BadRequestException({
+        code: 'CONSENT_VERSION_UNKNOWN',
+        message: 'حدّث الصفحة ثم أعد الإرسال',
+        details: [{ field: 'consentTextVersion', message: 'إصدار نص موافقة غير معروف' }],
+      });
+    }
+
     const target = await this.resolveTarget(slug);
     const form = parseContactForm(target.contact_form);
 
@@ -76,7 +87,11 @@ export class ContactCaptureService {
     const phoneNormalized = normalizePhone(input.phone);
     const organizationId = target.organization_id;
 
-    const duplicateOfId = await this.findDuplicate(organizationId, emailNormalized, phoneNormalized);
+    const duplicateOfId = await this.findDuplicate(
+      organizationId,
+      emailNormalized,
+      phoneNormalized,
+    );
 
     await withRlsContext(this.prisma, { organizationId }, async (tx) => {
       const contact = await tx.contact.create({
