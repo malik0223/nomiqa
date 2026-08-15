@@ -3,6 +3,7 @@
  * لا تضع هنا منطق أعمال ولا اعتماديات على قاعدة البيانات.
  */
 
+export * from './card.js';
 export * from './email.js';
 export * from './privacy.js';
 

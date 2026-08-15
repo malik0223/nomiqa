@@ -67,6 +67,7 @@ model Organization {
   memberships OrganizationMembership[]
   auditLogs   AuditLog[]
   files       FileObject[]
+  cards       Card[]
 
   @@map("organizations")
 }
@@ -172,6 +173,166 @@ model AuditLog {
   @@index([organizationId, occurredAt(sort: Desc)])
   @@index([actorUserId, occurredAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ------------------------------------------------------------
+// البطاقات والقوالب (§7)
+// ------------------------------------------------------------
+
+/// تعريف قالب. القوالب مشتركة بين كل المؤسسات (بلا organizationId)
+/// حتى المرحلة 4 حيث تُضاف قوالب مؤسسية خاصة.
+model Template {
+  key         String   @id
+  name        String
+  nameEn      String?  @map("name_en")
+  /// أحدث إصدار منشور. البطاقات تثبّت إصداراً بعينه عند النشر.
+  latestVersion Int    @default(1) @map("latest_version")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  versions TemplateVersion[]
+
+  @@map("templates")
+}
+
+/// إصدار قالب.
+///
+/// وثيقة المعمارية §4.4: يجب حفظ Version حتى لا تتغير البطاقات
+/// المنشورة بصورة غير مقصودة عند تحديث القالب. الإصدارات **غير
+/// قابلة للتعديل** بعد نشرها — التغيير يعني إصداراً جديداً.
+model TemplateVersion {
+  templateKey String   @map("template_key")
+  version     Int
+  /// تعريف القالب: التخطيط، الأقسام المتاحة، القيم الافتراضية.
+  definition  Json
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  template Template @relation(fields: [templateKey], references: [key], onDelete: Cascade)
+
+  @@id([templateKey, version])
+  @@map("template_versions")
+}
+
+/// البطاقة الرقمية.
+///
+/// المحتوى النصي يعيش في card_localizations لا هنا: البطاقة الواحدة
+/// تُنشر بالعربية والإنجليزية، ووضع الحقول هنا كان سيفرض عموداً لكل
+/// حقل لكل لغة.
+model Card {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  ownerUserId    String    @map("owner_user_id") @db.Uuid
+
+  /// الرابط العام. **ثابت لا يتغير بتحديث البطاقة** — وإلا بطل كل
+  /// QR مطبوع وكل رابط شاركه صاحبه (§7.4).
+  slug   String
+  /// draft | published | unpublished
+  status String @default("draft")
+
+  templateKey String @map("template_key")
+  /// إصدار القالب المثبَّت. يُثبَّت عند النشر فلا يتغير عرض البطاقة
+  /// المنشورة حين يُحدَّث القالب.
+  templateVersion Int @map("template_version")
+
+  /// الألوان والخطوط ونصف القطر — يختلف حسب القالب فلا يصلح أعمدة.
+  theme Json?
+  /// ترتيب الأقسام وإظهارها. مصفوفة مفاتيح أقسام.
+  sectionOrder Json? @map("section_order")
+
+  /// اللغة الافتراضية للعرض حين لا يحدد الزائر لغة.
+  defaultLocale String @default("ar") @map("default_locale")
+
+  avatarFileId String? @map("avatar_file_id") @db.Uuid
+  coverFileId  String? @map("cover_file_id") @db.Uuid
+  logoFileId   String? @map("logo_file_id") @db.Uuid
+
+  /// يمنع الكتابة فوق تعديل متزامن (§4.5 Optimistic Concurrency).
+  revision Int @default(1)
+
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  localizations CardLocalization[]
+  links         CardLink[]
+  publications  CardPublication[]
+
+  /// الـslug فريد عالمياً: يظهر في الرابط العام nomiqa.om/<slug>.
+  @@unique([slug])
+  @@index([organizationId, status])
+  @@index([ownerUserId])
+  @@map("cards")
+}
+
+/// محتوى البطاقة بلغة واحدة.
+model CardLocalization {
+  cardId String @map("card_id") @db.Uuid
+  locale String
+
+  fullName         String  @map("full_name")
+  jobTitle         String? @map("job_title")
+  organizationName String? @map("organization_name")
+  department       String?
+  bio              String?
+  addressLine      String? @map("address_line")
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, locale])
+  @@map("card_localizations")
+}
+
+/// رابط أو وسيلة تواصل على البطاقة.
+///
+/// جدول واحد لكل الأنواع بدل عمود لكل وسيلة: إضافة وسيلة جديدة
+/// تصبح صفاً لا مهاجرة، والترتيب والإظهار يصيران خاصية للصف.
+model CardLink {
+  id     String @id @default(uuid()) @db.Uuid
+  cardId String @map("card_id") @db.Uuid
+
+  /// phone | email | whatsapp | website | booking | social | custom
+  type String
+  /// للشبكات الاجتماعية: linkedin | x | instagram …
+  platform String?
+  /// نص الزر. قد يختلف حسب اللغة، فيُحفظ لكل لغة عند الحاجة.
+  label   String?
+  labelEn String? @map("label_en")
+  /// القيمة الخام: رقم بصيغة E.164، بريد، أو رابط.
+  value   String
+
+  position  Int     @default(0)
+  isVisible Boolean @default(true) @map("is_visible")
+  /// زر إجراء رئيسي يظهر بارزاً (§7.2 Call to Action).
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, position])
+  @@map("card_links")
+}
+
+/// سجل عمليات النشر.
+///
+/// يحفظ **لقطة كاملة** من البطاقة وقت النشر. الغرض ليس التاريخ فحسب:
+/// الصفحة العامة تُقدَّم من اللقطة لا من الجداول الحيّة، فلا يظهر
+/// تعديل نصف مكتمل لزائر بينما صاحبها يحرر مسودته.
+model CardPublication {
+  id            String   @id @default(uuid()) @db.Uuid
+  cardId        String   @map("card_id") @db.Uuid
+  revision      Int
+  templateKey   String   @map("template_key")
+  templateVersion Int    @map("template_version")
+  /// اللقطة المعروضة: المحتوى بكل اللغات والروابط والثيم.
+  snapshot      Json
+  publishedBy   String?  @map("published_by") @db.Uuid
+  publishedAt   DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, publishedAt(sort: Desc)])
+  @@map("card_publications")
 }
 
 // ------------------------------------------------------------
