@@ -24,6 +24,7 @@ export async function resetData(): Promise<void> {
     TRUNCATE TABLE
       outbox_events, audit_logs, membership_roles, file_objects,
       notification_deliveries, user_consents, data_subject_requests,
+      platform_audit_logs, platform_admins, feature_flag_overrides,
       organization_memberships, organizations, users
     RESTART IDENTITY CASCADE
   `);

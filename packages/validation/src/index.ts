@@ -180,6 +180,26 @@ export const profileUpdateSchema = z
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
+// ---------- رايات الميزات ----------
+
+export const featureFlagUpdateSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    rolloutPercentage: z.number().int().min(0).max(100).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, 'لم تُرسل أي حقول للتحديث');
+
+export const featureFlagOverrideSchema = z
+  .object({
+    organizationId: z.string().uuid('معرّف مؤسسة غير صالح'),
+    enabled: z.boolean(),
+  })
+  .strict();
+
+export type FeatureFlagUpdateInput = z.infer<typeof featureFlagUpdateSchema>;
+export type FeatureFlagOverrideInput = z.infer<typeof featureFlagOverrideSchema>;
+
 /** تحديث موافقة واحدة. الأغراض الإلزامية لا تُسحب من هنا. */
 export const consentUpdateSchema = z.object({
   purpose: z.enum(['terms', 'privacy', 'marketing'], { message: 'غرض غير معروف' }),

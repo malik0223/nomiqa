@@ -89,6 +89,8 @@ export interface MyOrganization {
 export interface MeResponse {
   user: AuthenticatedUser;
   organizations: MyOrganization[];
+  /** الرايات مقيَّمة للمؤسسة الأولى. راية غير مذكورة = مطفأة. */
+  featureFlags: Record<string, boolean>;
 }
 
 // ---------- الصحة ----------

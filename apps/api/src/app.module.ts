@@ -2,11 +2,13 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { SentryModule } from '@sentry/nestjs/setup';
+import { AdminModule } from './admin/admin.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { Auth0JwtGuard } from './auth/auth0-jwt.guard.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
 import { RateLimitGuard } from './common/rate-limit.guard.js';
 import { RequestIdMiddleware } from './common/request-id.middleware.js';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module.js';
 import { FilesModule } from './files/files.module.js';
 import { HealthController } from './health/health.controller.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -24,12 +26,14 @@ import { UsersModule } from './users/users.module.js';
     SentryModule.forRoot(),
     RedisModule,
     PrismaModule,
+    FeatureFlagsModule,
     NotificationsModule,
     AuthModule,
     OrganizationsModule,
     UsersModule,
     FilesModule,
     PrivacyModule,
+    AdminModule,
   ],
   controllers: [HealthController],
   providers: [

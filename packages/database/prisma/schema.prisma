@@ -40,9 +40,10 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships OrganizationMembership[]
-  auditLogs   AuditLog[]
-  consents    UserConsent[]
+  memberships   OrganizationMembership[]
+  auditLogs     AuditLog[]
+  consents      UserConsent[]
+  platformAdmin PlatformAdmin?
 
   @@index([email])
   @@map("users")
@@ -171,6 +172,78 @@ model AuditLog {
   @@index([organizationId, occurredAt(sort: Desc)])
   @@index([actorUserId, occurredAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ------------------------------------------------------------
+// إدارة المنصة (§6.4)
+// ------------------------------------------------------------
+
+/// صلاحية إدارة المنصة.
+///
+/// **ليست دوراً داخل مؤسسة.** أدوار المؤسسات تُمنح من داخل المنتج،
+/// أما هذه فتُمنح خارج التطبيق عبر سكربت مقصود — لأنها تتجاوز حدود
+/// المؤسسات، ولا يجوز أن تكون على بُعد نقرة في واجهة.
+model PlatformAdmin {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @unique @map("user_id") @db.Uuid
+  /// من منح الصلاحية. null للمنحة الأولى التي تُنشأ بالسكربت.
+  grantedBy String?   @map("granted_by") @db.Uuid
+  grantedAt DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("platform_admins")
+}
+
+/// سجل تدقيق عمليات المنصة.
+///
+/// منفصل عن audit_logs لأن ذاك مقيّد بالمؤسسة بحكم سياسة RLS،
+/// وعمليات الإدارة تقع خارج أي مؤسسة.
+model PlatformAuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorUserId  String   @map("actor_user_id") @db.Uuid
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  metadata     Json?
+  requestId    String?  @map("request_id")
+  ipAddress    String?  @map("ip_address")
+  occurredAt   DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([occurredAt(sort: Desc)])
+  @@index([actorUserId, occurredAt(sort: Desc)])
+  @@map("platform_audit_logs")
+}
+
+/// راية ميزة على مستوى المنصة (§6.4).
+model FeatureFlag {
+  key         String   @id
+  description String
+  /// القيمة الافتراضية لكل المؤسسات.
+  enabled     Boolean  @default(false)
+  /// نسبة الإطلاق التدريجي 0–100، تُطبَّق حين enabled = false.
+  rolloutPercentage Int @default(0) @map("rollout_percentage")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  overrides FeatureFlagOverride[]
+
+  @@map("feature_flags")
+}
+
+/// استثناء صريح لمؤسسة بعينها. يتقدّم على الافتراضي وعلى النسبة.
+model FeatureFlagOverride {
+  flagKey        String   @map("flag_key")
+  organizationId String   @map("organization_id") @db.Uuid
+  enabled        Boolean
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  flag FeatureFlag @relation(fields: [flagKey], references: [key], onDelete: Cascade)
+
+  @@id([flagKey, organizationId])
+  @@index([organizationId])
+  @@map("feature_flag_overrides")
 }
 
 // ------------------------------------------------------------

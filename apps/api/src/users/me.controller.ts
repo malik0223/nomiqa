@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser, MeResponse, MyOrganization } from '@nomiqa/contracts';
 import { withRlsContext } from '@nomiqa/database';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CurrentUser } from '../tenancy/current.decorators.js';
 import { NoTenantRequired } from '../tenancy/no-tenant.decorator.js';
@@ -10,7 +11,10 @@ import { NoTenantRequired } from '../tenancy/no-tenant.decorator.js';
 @ApiBearerAuth()
 @Controller({ path: 'me', version: '1' })
 export class MeController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly flags: FeatureFlagsService,
+  ) {}
 
   /**
    * مسار الإقلاع الذي يستدعيه الويب بعد الدخول.
@@ -60,6 +64,10 @@ export class MeController {
       ],
     }));
 
-    return { user, organizations };
+    // الرايات تُقيَّم للمؤسسة الأولى: العميل يحتاجها فور الإقلاع
+    // ليقرر ما يعرضه، وطلب منفصل لها يعني وميض واجهة عند كل تحميل.
+    const featureFlags = await this.flags.evaluateAll(organizations[0]?.id ?? null);
+
+    return { user, organizations, featureFlags };
   }
 }
