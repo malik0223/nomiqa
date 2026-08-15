@@ -1,3 +1,5 @@
+import './instrument.js';
+import * as Sentry from '@sentry/node';
 import { Worker } from 'bullmq';
 import { QUEUE_NAMES, type AccountDeletionJobData, type EmailJobData } from '@nomiqa/contracts';
 import { createLogger } from '@nomiqa/observability';
@@ -52,6 +54,12 @@ for (const worker of workers) {
       { queue: worker.name, jobId: job?.id, attempts: job?.attemptsMade, error: error.message },
       'فشلت المهمة',
     );
+
+    // لا حمولة المهمة هنا: قد تحمل بريد المستلم ومتغيرات القالب.
+    Sentry.captureException(error, {
+      tags: { queue: worker.name },
+      extra: { jobId: job?.id, attempts: job?.attemptsMade },
+    });
 
     if (worker.name === QUEUE_NAMES.ACCOUNT_DELETION) {
       const exhausted = job !== undefined && job.attemptsMade >= (job.opts.attempts ?? 1);

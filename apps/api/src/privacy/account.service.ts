@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -13,35 +14,29 @@ import { Redis } from 'ioredis';
 import { createHash } from 'node:crypto';
 import { Auth0ManagementService } from '../auth/auth0-management.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { REDIS_CLIENT } from '../redis/redis.module.js';
 import { ConsentsService } from './consents.service.js';
 
 @Injectable()
 export class AccountService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AccountService.name);
-  private connection!: Redis;
   private queue!: Queue<AccountDeletionJobData>;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly consents: ConsentsService,
     private readonly auth0Management: Auth0ManagementService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   onModuleInit(): void {
-    const url = process.env.REDIS_URL;
-    if (!url) {
-      throw new Error('REDIS_URL مطلوب لطابور حذف الحسابات');
-    }
-
-    this.connection = new Redis(url, { maxRetriesPerRequest: null });
     this.queue = new Queue<AccountDeletionJobData>(QUEUE_NAMES.ACCOUNT_DELETION, {
-      connection: this.connection,
+      connection: this.redis,
     });
   }
 
   async onModuleDestroy(): Promise<void> {
     await this.queue?.close();
-    await this.connection?.quit();
   }
 
   /**

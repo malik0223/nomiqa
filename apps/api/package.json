@@ -25,6 +25,7 @@
     "@nomiqa/database": "workspace:*",
     "@nomiqa/observability": "workspace:*",
     "@nomiqa/validation": "workspace:*",
+    "@sentry/nestjs": "^10.70.0",
     "bullmq": "^5.81.3",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.1",

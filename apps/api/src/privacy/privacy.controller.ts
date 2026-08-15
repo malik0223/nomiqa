@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser, ConsentStatus, UserDataExport } from '@nomiqa/contracts';
 import { consentUpdateSchema, type ConsentUpdateInput } from '@nomiqa/validation';
 import type { Request } from 'express';
+import { RateLimit } from '../common/rate-limit.decorator.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { CurrentUser } from '../tenancy/current.decorators.js';
 import { NoTenantRequired } from '../tenancy/no-tenant.decorator.js';
@@ -61,6 +62,8 @@ export class PrivacyController {
 
   @NoTenantRequired()
   @Get('export')
+  // التصدير يقرأ كل بيانات المستخدم — مكلف ولا يُستدعى بتواتر.
+  @RateLimit({ limit: 5, windowSeconds: 3600 })
   @ApiOperation({ summary: 'تنزيل نسخة من بيانات المستخدم' })
   async exportData(@CurrentUser() user: AuthenticatedUser): Promise<UserDataExport> {
     return this.account.exportData(user.id);
@@ -89,6 +92,8 @@ export class PrivacyController {
    */
   @NoTenantRequired()
   @Post('account/deletion')
+  // حد ضيق: عملية لا رجعة فيها، ولا سبب مشروع لتكرارها.
+  @RateLimit({ limit: 3, windowSeconds: 3600 })
   @HttpCode(202)
   @ApiOperation({ summary: 'طلب حذف الحساب نهائياً' })
   async requestDeletion(

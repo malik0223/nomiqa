@@ -1,10 +1,11 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { QUEUE_NAMES, type EmailJobData, type EmailTemplate } from '@nomiqa/contracts';
 import { withRlsContext } from '@nomiqa/database';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { REDIS_CLIENT } from '../redis/redis.module.js';
 
 export interface SendEmailInput {
   to: string;
@@ -26,24 +27,20 @@ export interface SendEmailInput {
 @Injectable()
 export class EmailService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EmailService.name);
-  private connection!: Redis;
   private queue!: Queue<EmailJobData>;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+  ) {}
 
   onModuleInit(): void {
-    const url = process.env.REDIS_URL;
-    if (!url) {
-      throw new Error('REDIS_URL مطلوب لطابور البريد');
-    }
-
-    this.connection = new Redis(url, { maxRetriesPerRequest: null });
-    this.queue = new Queue<EmailJobData>(QUEUE_NAMES.EMAIL, { connection: this.connection });
+    this.queue = new Queue<EmailJobData>(QUEUE_NAMES.EMAIL, { connection: this.redis });
   }
 
   async onModuleDestroy(): Promise<void> {
+    // الاتصال مشترك ويُغلق من RedisModule، فنغلق الطابور وحده.
     await this.queue?.close();
-    await this.connection?.quit();
   }
 
   async enqueue(input: SendEmailInput): Promise<void> {

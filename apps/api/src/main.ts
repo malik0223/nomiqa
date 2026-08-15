@@ -1,3 +1,6 @@
+// يجب أن يسبق كل استيراد آخر: Sentry يرصد بترقيع الوحدات،
+// وما يُحمَّل قبله لا يُرصد.
+import './instrument.js';
 import 'reflect-metadata';
 import { Logger, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';

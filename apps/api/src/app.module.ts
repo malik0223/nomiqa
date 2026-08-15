@@ -1,9 +1,11 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { AuthModule } from './auth/auth.module.js';
 import { Auth0JwtGuard } from './auth/auth0-jwt.guard.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
+import { RateLimitGuard } from './common/rate-limit.guard.js';
 import { RequestIdMiddleware } from './common/request-id.middleware.js';
 import { FilesModule } from './files/files.module.js';
 import { HealthController } from './health/health.controller.js';
@@ -11,6 +13,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { PrivacyModule } from './privacy/privacy.module.js';
+import { RedisModule } from './redis/redis.module.js';
 import { PermissionsGuard } from './tenancy/permissions.guard.js';
 import { TenantContextGuard } from './tenancy/tenant-context.guard.js';
 import { UsersModule } from './users/users.module.js';
@@ -18,6 +21,8 @@ import { UsersModule } from './users/users.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, cache: true }),
+    SentryModule.forRoot(),
+    RedisModule,
     PrismaModule,
     NotificationsModule,
     AuthModule,
@@ -28,7 +33,17 @@ import { UsersModule } from './users/users.module.js';
   ],
   controllers: [HealthController],
   providers: [
-    // ترتيب الحرّاس مقصود: هوية → مؤسسة → صلاحية.
+    // الترتيب مقصود: حد المعدل **أولاً**، ثم هوية → مؤسسة → صلاحية.
+    //
+    // الحرّاس في NestJS تعمل بترتيب التسجيل، وأول رفض يقصّر البقية.
+    // وضع حد المعدل بعد المصادقة يعني أن الطلبات المجهولة لا تُحاسَب
+    // إطلاقاً — وهي بالضبط ناقل الإساءة الأهم: التخمين والكشط
+    // والإغراق على المسارات العامة.
+    //
+    // الأثر: المحاسبة بالعنوان لا بالمستخدم، لأن الهوية لم تُحلّ بعد.
+    // حدٌّ لكل مستخدم يحتاج حارساً ثانياً بعد المصادقة، ويُضاف عند
+    // ظهور شكوى فعلية من مؤسسات تتشارك عنواناً واحداً.
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: Auth0JwtGuard },
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

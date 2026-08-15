@@ -12,6 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser, TenantContext } from '@nomiqa/contracts';
 import { PERMISSIONS } from '@nomiqa/database';
 import { uploadRequestSchema, type UploadRequestInput } from '@nomiqa/validation';
+import { RateLimit } from '../common/rate-limit.decorator.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { CurrentTenant, CurrentUser } from '../tenancy/current.decorators.js';
 import { RequirePermissions } from '../tenancy/require-permissions.decorator.js';
@@ -24,6 +25,8 @@ export class FilesController {
   constructor(private readonly files: FilesService) {}
 
   @Post('upload-url')
+  // كل رابط يمنح قدرة كتابة في التخزين — نحدّ من إصدارها بالجملة.
+  @RateLimit({ limit: 60, windowSeconds: 3600 })
   @RequirePermissions(PERMISSIONS.CARDS_WRITE)
   @ApiOperation({ summary: 'طلب رابط رفع موقّع' })
   async createUploadUrl(
