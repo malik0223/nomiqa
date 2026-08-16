@@ -98,6 +98,11 @@ model Organization {
   payments       Payment[]
   supportTickets SupportTicket[]
 
+  nfcTags            NfcTag[]
+  campaigns          Campaign[]
+  signatureTemplates SignatureTemplate[]
+  walletPasses       WalletPass[]
+
   @@map("organizations")
 }
 
@@ -323,6 +328,11 @@ model Card {
   publications   CardPublication[]
   contacts       Contact[]
   changeRequests CardChangeRequest[]
+
+  nfcTags          NfcTag[]
+  campaigns        Campaign[]
+  walletPasses     WalletPass[]
+  signatureProfile SignatureProfile?
 
   /// الـslug فريد عالمياً: يظهر في الرابط العام nomiqa.om/<slug>.
   @@unique([slug])
@@ -598,6 +608,13 @@ model CardEvent {
   /// mobile | tablet | desktop
   deviceType   String? @map("device_type")
 
+  /// مصدر الزيارة (§10.4): direct | qr | nfc | campaign | signature | wallet | meeting.
+  /// null لصفوف كُتبت قبل المرحلة 5 — تمييزها عن `direct` مقصود.
+  source     String? @map("source")
+  /// الحملة المُسنَد إليها. تُحلّ من الكود في دالة الإدراج لا في العميل.
+  /// بلا مفتاح أجنبي، كبقية أعمدة هذا الجدول — راجع تعليق المهاجرة.
+  campaignId String? @map("campaign_id") @db.Uuid
+
   occurredAt DateTime @map("occurred_at") @db.Timestamptz(6)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -605,6 +622,7 @@ model CardEvent {
   @@index([cardId, type, occurredAt(sort: Desc)])
   @@index([organizationId, occurredAt(sort: Desc)])
   @@index([occurredAt])
+  @@index([campaignId, occurredAt(sort: Desc)])
   @@map("card_events")
 }
 
@@ -1511,4 +1529,170 @@ model SupportMessage {
 
   @@index([ticketId, createdAt])
   @@map("support_messages")
+}
+
+// ------------------------------------------------------------
+// الحضور المهني المتكامل (§10)
+// ------------------------------------------------------------
+
+/// وسم NFC مرتبط ببطاقة.
+///
+/// **طبقة إحالة مقصودة بين المعدن والبطاقة.** الوسم يُكتب مرة واحدة
+/// ولا يُكتب ثانية — قد يكون مقفلاً، وقد يكون في جيب موظف في بلد آخر.
+/// لذلك يحمل كوداً خاصاً به لا رابط البطاقة مباشرةً: إعادة توجيهه إلى
+/// بطاقة أخرى تصير صفاً يُحدَّث، وإبطال وسم مفقود يصير عموداً يُملأ،
+/// وكلاهما مستحيل لو حمل الوسم الرابط النهائي.
+model NfcTag {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  /// البطاقة الحالية. null لوسم أُصدر ولم يُسلَّم بعد.
+  cardId         String? @map("card_id") @db.Uuid
+
+  /// الكود في `nomiqa.om/t/<code>`. فريد عالمياً ويولّده الخادم.
+  code   String
+  /// اسم يميّزه للمسؤول: «وسم مكتب الاستقبال»، «بطاقة أحمد».
+  label  String?
+  /// unassigned | active | revoked
+  status String  @default("unassigned")
+
+  /// عدّاد تقريبي للاستخدام، يُحدَّث خارج مسار الطلب. ليس مقياساً
+  /// تحليلياً — القياس الدقيق في card_events بمصدر nfc.
+  scanCount  Int       @default(0) @map("scan_count")
+  lastScanAt DateTime? @map("last_scan_at") @db.Timestamptz(6)
+
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason   String?   @map("revoked_reason")
+  revokedByUserId String?   @map("revoked_by_user_id") @db.Uuid
+  /// الوسم البديل الذي أُصدر عند الإبطال. يربط المفقود ببديله في السجل.
+  replacedByTagId String?   @map("replaced_by_tag_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  card         Card?        @relation(fields: [cardId], references: [id], onDelete: SetNull)
+
+  @@unique([code])
+  @@index([organizationId, status])
+  @@index([cardId])
+  @@map("nfc_tags")
+}
+
+/// حملة تسويقية برمز مستقل (§10.4).
+///
+/// لماذا كود مستقل ولا يكفي UTM على رابط البطاقة: الحملة تُطبع على
+/// لافتة معرض أو إعلان مطبوع، ورابط يحمل خمسة معاملات استعلام لا
+/// يُقرأ ولا يُكتب يدوياً. الكود القصير يحمل المعاملات في الخادم
+/// ويضيفها عند التوجيه، فيبقى المطبوع قصيراً والقياس كاملاً.
+model Campaign {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  cardId         String @map("card_id") @db.Uuid
+
+  code String
+  name String
+
+  utmSource   String  @map("utm_source")
+  utmMedium   String  @map("utm_medium")
+  utmCampaign String  @map("utm_campaign")
+  utmTerm     String? @map("utm_term")
+  utmContent  String? @map("utm_content")
+
+  /// نافذة التشغيل. خارجها يظل الرابط يعمل ويصل إلى البطاقة، ولا
+  /// يُسند إلى الحملة: زائر فتح لافتة معرض انتهى قبل شهر لا يجوز أن
+  /// يُحسب في أرقامه، ولا يجوز أن يُقابَل بصفحة معطّلة.
+  startsAt DateTime? @map("starts_at") @db.Timestamptz(6)
+  endsAt   DateTime? @map("ends_at") @db.Timestamptz(6)
+  isActive Boolean   @default(true) @map("is_active")
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  card         Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([code])
+  @@index([organizationId, isActive, createdAt(sort: Desc)])
+  @@index([cardId])
+  @@map("campaigns")
+}
+
+/// قالب توقيع مؤسسي مركزي (§10.5 خطوة 2).
+model SignatureTemplate {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  name        String
+  /// classic | compact | stacked | banner
+  templateKey String @map("template_key")
+  /// خيارات العرض: QR، الصورة، الشعار، اللون، إخلاء المسؤولية.
+  options     Json
+
+  isDefault  Boolean @default(false) @map("is_default")
+  /// يقفل اختيار الموظف. التوقيع أكثر ما يظهر من هوية المؤسسة خارجها.
+  isEnforced Boolean @default(false) @map("is_enforced")
+
+  updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, isDefault])
+  @@map("signature_templates")
+}
+
+/// اختيار صاحب البطاقة لتوقيعه.
+///
+/// صف لكل بطاقة لا لكل مستخدم: من يملك بطاقتين — واحدة بالعربية
+/// لعملاء محليين وأخرى بالإنجليزية — يحتاج توقيعاً لكل منهما.
+model SignatureProfile {
+  cardId         String @id @map("card_id") @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  templateKey String @map("template_key")
+  options     Json
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("signature_profiles")
+}
+
+/// بطاقة صادرة في محفظة رقمية (§10.2).
+///
+/// نحفظ الصادر لا لأن المحفظة تسألنا عنه، بل لأن **سحبه يحتاجه**:
+/// موظف غادر المؤسسة تبقى بطاقته في هاتف كل من أضافها، ولا سبيل إلى
+/// تحديثها أو إبطالها إلا برقمها التسلسلي ورمز مصادقتها.
+model WalletPass {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  cardId         String @map("card_id") @db.Uuid
+
+  /// apple | google
+  platform     String
+  serialNumber String @map("serial_number")
+
+  /// رمز مصادقة خدمة تحديث Apple. عشوائي لكل بطاقة، ولا يُعاد عرضه
+  /// بعد الإصدار — الجهاز وحده يحمله.
+  authToken String? @map("auth_token")
+
+  /// آخر إصدار أُنشئ. تحديث البطاقة يُنشئ إصداراً جديداً بالرقم نفسه.
+  issuedAt  DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  card         Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([serialNumber])
+  @@unique([cardId, platform])
+  @@index([organizationId, platform])
+  @@map("wallet_passes")
 }

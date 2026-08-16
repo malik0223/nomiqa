@@ -19,15 +19,18 @@ import { FilesModule } from './files/files.module.js';
 import { HealthController } from './health/health.controller.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
+import { PresenceModule } from './presence/presence.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { PrivacyModule } from './privacy/privacy.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { SignaturesModule } from './signatures/signatures.module.js';
 import { SupportModule } from './support/support.module.js';
 import { TeamsModule } from './teams/teams.module.js';
 import { PermissionsGuard } from './tenancy/permissions.guard.js';
 import { SuspensionGuard } from './tenancy/suspension.guard.js';
 import { TenantContextGuard } from './tenancy/tenant-context.guard.js';
 import { UsersModule } from './users/users.module.js';
+import { WalletsModule } from './wallets/wallets.module.js';
 
 @Module({
   imports: [
@@ -48,6 +51,9 @@ import { UsersModule } from './users/users.module.js';
     TeamsModule,
     ContactsModule,
     AnalyticsModule,
+    PresenceModule,
+    SignaturesModule,
+    WalletsModule,
     PrivacyModule,
     SupportModule,
     AdminModule,

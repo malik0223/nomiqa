@@ -1,11 +1,12 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import type { CardDetail } from '@nomiqa/contracts';
+import type { CardDetail, WalletPassIssue } from '@nomiqa/contracts';
 import {
   cardUpdateFieldsSchema,
   createCardSchema,
   slugSchema,
+  walletIssueSchema,
   type CardUpdateFieldsInput,
   type CreateCardInput,
 } from '@nomiqa/validation';
@@ -219,4 +220,35 @@ export async function confirmUploadAction(fileId: string): Promise<ActionResult>
 
 function describe(error: unknown): string | undefined {
   return error instanceof ApiError ? error.message : undefined;
+}
+
+/**
+ * يصدر بطاقة محفظة رقمية (§10.2).
+ *
+ * الناتج يُعاد إلى المكوّن العميل ليتنقّل به: رابط Google الموقّع
+ * ينتهي بعد ساعة، ومسار Apple يحتاج جلسة — فلا يصلح أيٌّ منهما رابطاً
+ * ثابتاً في الصفحة.
+ */
+export async function issueWalletPassAction(input: unknown): Promise<{
+  ok: boolean;
+  message?: string;
+  issue?: WalletPassIssue;
+}> {
+  const parsed = walletIssueSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message };
+  }
+
+  try {
+    const organizationId = await activeOrganizationId();
+    const issue = await apiFetch<WalletPassIssue>('/wallets/issue', {
+      method: 'POST',
+      body: parsed.data,
+      organizationId,
+    });
+
+    return { ok: true, issue };
+  } catch (error) {
+    return { ok: false, message: describe(error) };
+  }
 }

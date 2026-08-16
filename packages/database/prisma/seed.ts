@@ -18,6 +18,7 @@ const PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'billing:read', description: 'قراءة الاشتراك والفواتير' },
   { key: 'billing:manage', description: 'تغيير الباقة والدفع والإلغاء' },
   { key: 'support:manage', description: 'فتح تذاكر الدعم ومتابعتها' },
+  { key: 'presence:manage', description: 'إدارة وسوم NFC والحملات' },
 ];
 
 /**
@@ -56,6 +57,7 @@ const SYSTEM_ROLES: Array<{
       'branding:manage',
       'billing:read',
       'support:manage',
+      'presence:manage',
     ],
   },
   {
@@ -138,7 +140,16 @@ const PLANS: Array<{
     description: 'للمحترف المستقل — بطاقات متعددة وتحليلات كاملة.',
     descriptionEn: 'For independent professionals — multiple cards and full analytics.',
     limits: { maxCards: 5, maxMembers: 1, maxDepartments: 0, maxBranches: 0, maxContacts: 2000 },
-    features: ['remove_platform_badge', 'contacts_export'],
+    // المحترف المستقل يحتاج حضوره في البريد والاجتماعات والمحفظة —
+    // وهي نقاط تواصل فردية. الوسوم والحملات تبدأ من باقة الفرق: كلاهما
+    // يُدار مركزياً ولا معنى له لمن يدير نفسه.
+    features: [
+      'remove_platform_badge',
+      'contacts_export',
+      'email_signature',
+      'meeting_backgrounds',
+      'wallet_passes',
+    ],
     trialDays: 14,
     isPublic: true,
     sortOrder: 1,
@@ -169,6 +180,11 @@ const PLANS: Array<{
       'approval_workflow',
       'csv_import',
       'employee_directory',
+      'email_signature',
+      'meeting_backgrounds',
+      'wallet_passes',
+      'nfc_tags',
+      'campaigns',
     ],
     trialDays: 14,
     isPublic: true,
@@ -202,6 +218,11 @@ const PLANS: Array<{
       'employee_directory',
       'custom_domain',
       'priority_support',
+      'email_signature',
+      'meeting_backgrounds',
+      'wallet_passes',
+      'nfc_tags',
+      'campaigns',
     ],
     trialDays: 0,
     // تُباع بالتفاوض: سعرها ليس رقماً واحداً يصلح لصفحة أسعار.

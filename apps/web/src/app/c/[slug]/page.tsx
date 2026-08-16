@@ -10,7 +10,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ lang?: string; src?: string }>;
+  searchParams: Promise<{ lang?: string; src?: string; k?: string }>;
 }
 
 /**
@@ -25,7 +25,7 @@ interface PageProps {
  */
 export default async function PublicCardPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { lang, src } = await searchParams;
+  const { lang, src, k } = await searchParams;
 
   const card = await fetchPublicCard(slug);
   if (!card) {
@@ -58,7 +58,17 @@ export default async function PublicCardPage({ params, searchParams }: PageProps
       */}
       {contactForm?.enabled ? <ContactForm slug={slug} locale={locale} form={contactForm} /> : null}
 
-      <AnalyticsBeacon slug={slug} locale={locale} apiUrl={API_URL} fromQr={src === 'qr'} />
+      {/*
+        المصدر والكود يمران كما وصلا: الـAPI يتحقق منهما بمخطط، والصفحة
+        تتجاهل ما لا تعرفه — فرمز قديم بمعامل حُذف لاحقاً يظل يعمل.
+      */}
+      <AnalyticsBeacon
+        slug={slug}
+        locale={locale}
+        apiUrl={API_URL}
+        source={src}
+        campaignCode={k}
+      />
     </main>
   );
 }

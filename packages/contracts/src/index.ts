@@ -9,6 +9,7 @@ export * from './branding.js';
 export * from './card.js';
 export * from './contact.js';
 export * from './email.js';
+export * from './presence.js';
 export * from './privacy.js';
 export * from './support.js';
 export * from './team.js';

@@ -47,6 +47,16 @@ export const PLAN_FEATURES = [
   'employee_directory',
   'custom_domain',
   'priority_support',
+  // المرحلة 5 — الحضور المهني المتكامل (§10).
+  //
+  // خمس ميزات لا واحدة: مؤسسة تريد وسوم NFC لفريق الاستقبال قد لا
+  // تحتاج حملات، ودمجها في «حزمة حضور» واحدة كان يجبرها على شراء ما
+  // لا تستخدم.
+  'nfc_tags',
+  'wallet_passes',
+  'email_signature',
+  'meeting_backgrounds',
+  'campaigns',
 ] as const;
 
 export type PlanFeature = (typeof PLAN_FEATURES)[number];

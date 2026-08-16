@@ -53,6 +53,16 @@
       "vcardDownloads": "vCard downloads",
       "formSubmits": "New contacts",
       "conversionRate": "Conversion rate"
+    },
+    "bySource": "Visits by touchpoint",
+    "sources": {
+      "direct": "Direct link",
+      "qr": "QR code",
+      "nfc": "NFC tag",
+      "campaign": "Campaign",
+      "signature": "Email signature",
+      "wallet": "Digital wallet",
+      "meeting": "Meeting background"
     }
   },
   "contacts": {
@@ -566,5 +576,118 @@
       "resolved": "Resolved",
       "closed": "Closed"
     }
+  },
+  "nfc": {
+    "title": "NFC tags",
+    "intro": "Write the tag URL once, then reassign or revoke it from here without touching the tag itself.",
+    "label": "Tag name",
+    "card": "Card",
+    "unassigned": "Unassigned",
+    "issue": "Issue tag",
+    "writeUrl": "URL to write on the tag",
+    "scans": "Scans",
+    "never": "Never scanned",
+    "reassign": "Reassign",
+    "detach": "Detach",
+    "revoke": "Revoke",
+    "revokeReason": "Reason for revoking",
+    "revokeWithReplacement": "Issue a replacement tag",
+    "revokeConfirm": "Revoking is permanent and cannot be undone. Continue?",
+    "empty": "No tags yet.",
+    "planLimit": "NFC tags are not included in your current plan.",
+    "noPublishedCards": "No published cards to link — publish a card first.",
+    "status": {
+      "unassigned": "Unassigned",
+      "active": "Active",
+      "revoked": "Revoked"
+    }
+  },
+  "campaigns": {
+    "title": "Campaigns",
+    "intro": "A dedicated code per campaign that measures its traffic and keeps working after it ends.",
+    "name": "Campaign name",
+    "card": "Card",
+    "utmSource": "utm_source",
+    "utmMedium": "utm_medium",
+    "utmCampaign": "utm_campaign",
+    "startsAt": "Start date",
+    "endsAt": "End date",
+    "shareUrl": "Campaign URL",
+    "downloadQr": "Download QR",
+    "report": "Report",
+    "deleteConfirm": "Delete this campaign? Recorded numbers are kept.",
+    "empty": "No campaigns yet.",
+    "planLimit": "Campaigns are not included in your current plan.",
+    "noPublishedCards": "No published cards — publish a card first.",
+    "views": "Views",
+    "uniqueVisitors": "Unique visitors",
+    "formSubmits": "New contacts",
+    "conversionRate": "Conversion rate",
+    "daily": "Daily views",
+    "status": {
+      "running": "Running",
+      "scheduled": "Scheduled",
+      "ended": "Ended",
+      "paused": "Paused"
+    },
+    "ranges": {
+      "30d": "30 days",
+      "90d": "90 days",
+      "365d": "A year"
+    }
+  },
+  "signature": {
+    "title": "Email signature",
+    "intro": "A signature built from your published card, so it stays current without rebuilding it.",
+    "template": "Template",
+    "showQr": "Show QR code",
+    "showAvatar": "Show photo",
+    "showLogo": "Show company logo",
+    "showSocialLinks": "Show social links",
+    "accentColor": "Accent colour",
+    "disclaimer": "Disclaimer",
+    "preview": "Preview",
+    "copyHtml": "Copy signature",
+    "copyText": "Copy plain text",
+    "enforced": "Your organisation enforces a single signature template, so options are locked.",
+    "instructions": "How to paste it",
+    "planLimit": "Email signatures are not included in your current plan.",
+    "noPublishedCards": "Publish a card first — the signature shows its public link.",
+    "templates": {
+      "classic": "Classic",
+      "compact": "Compact",
+      "stacked": "Stacked",
+      "banner": "Banner"
+    },
+    "clients": {
+      "gmail": "Gmail",
+      "outlook": "Outlook",
+      "apple_mail": "Apple Mail"
+    },
+    "clientSteps": {
+      "gmail": "Settings → See all settings → Signature → paste into the editor.",
+      "outlook": "Settings → Mail → Compose and reply → paste into the signature editor.",
+      "apple_mail": "Preferences → Signatures → create one and paste, then clear \"Always match my default message font\"."
+    },
+    "backgrounds": "Meeting backgrounds",
+    "backgroundsIntro": "A 1920x1080 background built from the same card, for Zoom, Teams and Meet.",
+    "platform": "Platform",
+    "scheme": "Palette",
+    "schemeLight": "Light",
+    "schemeDark": "Dark",
+    "generate": "Generate background",
+    "downloadPng": "Download PNG",
+    "backgroundHint": "Upload the file in your meeting app default background settings.",
+    "platforms": {
+      "zoom": "Zoom",
+      "teams": "Microsoft Teams",
+      "meet": "Google Meet"
+    }
+  },
+  "wallet": {
+    "title": "Digital wallet",
+    "hint": "A pass on your phone carrying a code that opens your published card.",
+    "apple": "Add to Apple Wallet",
+    "google": "Add to Google Wallet"
   }
 }

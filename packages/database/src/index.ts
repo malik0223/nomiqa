@@ -102,6 +102,17 @@ export const PERMISSIONS = {
   BILLING_MANAGE: 'billing:manage',
   /// فتح تذاكر الدعم ومتابعتها.
   SUPPORT_MANAGE: 'support:manage',
+  /**
+   * إدارة وسوم NFC والحملات (§10).
+   *
+   * صلاحية واحدة للاثنين لا صلاحيتان: كلاهما إصدار **كود قصير يمثّل
+   * المؤسسة في العالم الخارجي**، ومن يُؤتمن على إصدار وسم يُطبع على
+   * معدن يُؤتمن على إصدار رمز يُطبع على لافتة.
+   *
+   * ومنفصلة عن `branding:manage` لأن الوسوم تشغيلية لا هوية: مسؤول
+   * المعرض يوزّع وسوماً ولا يغيّر ألوان المؤسسة.
+   */
+  PRESENCE_MANAGE: 'presence:manage',
 } as const;
 
 export const SYSTEM_ROLES = {

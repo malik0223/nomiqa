@@ -101,6 +101,27 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
             {t('billing.title')}
           </Link>
 
+          {/* شاشات المرحلة 5 — نفس القاعدة أعلاه: الظهور للجميع
+              والحدّ من الخادم. */}
+          <Link
+            href="/signature"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('signature.title')}
+          </Link>
+          <Link
+            href="/nfc"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('nfc.title')}
+          </Link>
+          <Link
+            href="/campaigns"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('campaigns.title')}
+          </Link>
+
           <a
             href="/auth/logout"
             className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
@@ -231,6 +252,27 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
               )}
             </section>
           </div>
+
+          {/*
+            توزيع نقاط التواصل (§10.4).
+
+            يظهر فقط حين يوجد إسناد فعلي: قسم فارغ يوحي بأن القياس
+            معطّل، بينما الحقيقة أن كل الزيارات جاءت من روابط مُشارَكة
+            مباشرة — وهي حالة طبيعية لا خلل.
+          */}
+          {analytics.sources.length > 0 ? (
+            <section className="mt-4 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
+              <h2 className="text-sm font-semibold">{t('dashboard.bySource')}</h2>
+              <ul className="mt-4 space-y-3">
+                {analytics.sources.map((entry) => (
+                  <li key={entry.source} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate">{t(`dashboard.sources.${entry.source}`)}</span>
+                    <span className="shrink-0 font-medium tabular-nums">{entry.views}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {analytics.cards.length > 1 ? (
             <section className="mt-4 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">

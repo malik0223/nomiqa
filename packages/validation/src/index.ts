@@ -14,6 +14,7 @@ export * from './billing.js';
 export * from './branding.js';
 export * from './card.js';
 export * from './contact.js';
+export * from './presence.js';
 export * from './support.js';
 export * from './team.js';
 

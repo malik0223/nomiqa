@@ -30,6 +30,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // أهداف المشاركة (`/t/<code>`) تمر كما هي: المسار مكتوب داخل وسوم
+  // NFC ومطبوع تحت رموز حملات، وإضافة بادئة لغة إليه تعني وسماً يعمل
+  // مرة ثم يُعاد توجيهه إلى مسار لم يُطبع قط.
+  if (isShareTargetPath(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   const publicCard = publicCardRewrite(request);
   if (publicCard) {
     // بلا توجيه لغوي: رابط البطاقة يجب أن يبقى كما شاركه صاحبه، فلو
@@ -50,6 +57,11 @@ export async function middleware(request: NextRequest) {
 /** المسار الداخلي للبطاقة العامة، وهو وجهة إعادة الكتابة نفسها. */
 function isPublicCardPath(pathname: string): boolean {
   return pathname === '/c' || pathname.startsWith('/c/');
+}
+
+/** مسار الكود القصير خلف وسوم NFC ورموز الحملات (§10.2 و§10.4). */
+function isShareTargetPath(pathname: string): boolean {
+  return pathname === '/t' || pathname.startsWith('/t/');
 }
 
 /**

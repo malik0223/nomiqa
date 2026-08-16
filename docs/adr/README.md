@@ -21,6 +21,8 @@
 | ADR-012 | PWA قبل تطبيقات الهاتف الأصلية                 | Accepted     | —                                             |
 | ADR-013 | **دلو عام منفصل لوسائط البطاقات المنشورة**     | **Accepted** | [ADR-013](ADR-013-published-card-media.md)    |
 | ADR-014 | **اعتماد Thawani بوابةً للدفع**                | **Accepted** | [ADR-014](ADR-014-payment-gateway.md)         |
+| ADR-015 | **توقيع بطاقات المحافظ بلا مكتبات خارجية**     | **Accepted** | [ADR-015](ADR-015-wallet-passes.md)           |
+| ADR-015 | **توقيع بطاقات المحافظ بلا مكتبات خارجية**      | **Accepted** | [ADR-015](ADR-015-wallet-passes.md)           |
 
 > القرارات من ADR-001 إلى ADR-009 وADR-011 وADR-012 موثقة حالياً داخل
 > [وثيقة المعمارية §16](../../Digital_Business_Card_SaaS_Technical_Architecture_AR.md).

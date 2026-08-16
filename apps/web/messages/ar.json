@@ -53,6 +53,16 @@
       "vcardDownloads": "تنزيلات vCard",
       "formSubmits": "جهات اتصال جديدة",
       "conversionRate": "معدل التحويل"
+    },
+    "bySource": "الزيارات حسب نقطة التواصل",
+    "sources": {
+      "direct": "رابط مباشر",
+      "qr": "رمز QR",
+      "nfc": "وسم NFC",
+      "campaign": "حملة",
+      "signature": "توقيع البريد",
+      "wallet": "المحفظة الرقمية",
+      "meeting": "خلفية اجتماع"
     }
   },
   "contacts": {
@@ -566,5 +576,118 @@
       "resolved": "محلولة",
       "closed": "مغلقة"
     }
+  },
+  "nfc": {
+    "title": "وسوم NFC",
+    "intro": "اكتب رابط الوسم مرة واحدة، ثم أعد توجيهه أو أبطله من هنا دون لمس القطعة نفسها.",
+    "label": "اسم الوسم",
+    "card": "البطاقة",
+    "unassigned": "غير مرتبط",
+    "issue": "إصدار وسم",
+    "writeUrl": "الرابط الذي يُكتب في الوسم",
+    "scans": "عدد المسحات",
+    "never": "لم يُمسح بعد",
+    "reassign": "إعادة التوجيه",
+    "detach": "فكّ الارتباط",
+    "revoke": "إبطال",
+    "revokeReason": "سبب الإبطال",
+    "revokeWithReplacement": "أصدر وسماً بديلاً",
+    "revokeConfirm": "الإبطال نهائي ولا يمكن التراجع عنه. متابعة؟",
+    "empty": "لا وسوم بعد.",
+    "planLimit": "وسوم NFC غير متاحة في باقتك الحالية.",
+    "noPublishedCards": "لا توجد بطاقات منشورة لربطها — انشر بطاقة أولاً.",
+    "status": {
+      "unassigned": "غير مرتبط",
+      "active": "نشط",
+      "revoked": "مُبطل"
+    }
+  },
+  "campaigns": {
+    "title": "الحملات",
+    "intro": "رمز مستقل لكل حملة، يقيس مصدر الزيارة ويظل يعمل بعد انتهائها.",
+    "name": "اسم الحملة",
+    "card": "البطاقة",
+    "utmSource": "utm_source",
+    "utmMedium": "utm_medium",
+    "utmCampaign": "utm_campaign",
+    "startsAt": "تاريخ البداية",
+    "endsAt": "تاريخ النهاية",
+    "shareUrl": "رابط الحملة",
+    "downloadQr": "تنزيل الرمز",
+    "report": "التقرير",
+    "deleteConfirm": "حذف الحملة؟ الأرقام المجمّعة تبقى محفوظة.",
+    "empty": "لا حملات بعد.",
+    "planLimit": "الحملات غير متاحة في باقتك الحالية.",
+    "noPublishedCards": "لا توجد بطاقات منشورة — انشر بطاقة أولاً.",
+    "views": "المشاهدات",
+    "uniqueVisitors": "الزوار الفريدون",
+    "formSubmits": "جهات اتصال جديدة",
+    "conversionRate": "معدل التحويل",
+    "daily": "المشاهدات اليومية",
+    "status": {
+      "running": "تعمل الآن",
+      "scheduled": "مجدولة",
+      "ended": "انتهت",
+      "paused": "موقوفة"
+    },
+    "ranges": {
+      "30d": "٣٠ يوماً",
+      "90d": "٩٠ يوماً",
+      "365d": "سنة"
+    }
+  },
+  "signature": {
+    "title": "توقيع البريد",
+    "intro": "توقيع يُبنى من بطاقتك المنشورة، فيبقى محدّثاً بلا إعادة إنشاء.",
+    "template": "القالب",
+    "showQr": "إظهار رمز QR",
+    "showAvatar": "إظهار الصورة",
+    "showLogo": "إظهار شعار المؤسسة",
+    "showSocialLinks": "إظهار روابط التواصل",
+    "accentColor": "اللون",
+    "disclaimer": "إخلاء مسؤولية",
+    "preview": "المعاينة",
+    "copyHtml": "نسخ التوقيع",
+    "copyText": "نسخ النسخة النصية",
+    "enforced": "مؤسستك تفرض قالب توقيع موحّداً، فلا يمكن تغيير الخيارات.",
+    "instructions": "كيفية اللصق",
+    "planLimit": "التوقيع غير متاح في باقتك الحالية.",
+    "noPublishedCards": "انشر بطاقة أولاً — التوقيع يعرض رابطها العام.",
+    "templates": {
+      "classic": "كلاسيكي",
+      "compact": "مختصر",
+      "stacked": "عمودي",
+      "banner": "بشريط"
+    },
+    "clients": {
+      "gmail": "Gmail",
+      "outlook": "Outlook",
+      "apple_mail": "Apple Mail"
+    },
+    "clientSteps": {
+      "gmail": "الإعدادات ← عرض كل الإعدادات ← التوقيع ← الصق في المحرر.",
+      "outlook": "الإعدادات ← البريد ← إنشاء والرد ← الصق في محرر التوقيع.",
+      "apple_mail": "التفضيلات ← التوقيعات ← أنشئ توقيعاً والصق فيه، وأزل علامة «استخدم خط الرسالة الافتراضي»."
+    },
+    "backgrounds": "خلفيات الاجتماعات",
+    "backgroundsIntro": "خلفية بأبعاد 1920×1080 مبنية من البطاقة نفسها، لـZoom وTeams وMeet.",
+    "platform": "المنصة",
+    "scheme": "اللوحة",
+    "schemeLight": "فاتحة",
+    "schemeDark": "داكنة",
+    "generate": "توليد الخلفية",
+    "downloadPng": "تنزيل PNG",
+    "backgroundHint": "ارفع الملف في إعدادات الخلفية الافتراضية داخل تطبيق الاجتماعات.",
+    "platforms": {
+      "zoom": "Zoom",
+      "teams": "Microsoft Teams",
+      "meet": "Google Meet"
+    }
+  },
+  "wallet": {
+    "title": "المحفظة الرقمية",
+    "hint": "بطاقة في هاتفك تحمل رمزاً يفتح بطاقتك المنشورة.",
+    "apple": "إضافة إلى Apple Wallet",
+    "google": "إضافة إلى Google Wallet"
   }
 }

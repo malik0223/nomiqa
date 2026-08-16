@@ -8,6 +8,7 @@ import {
   fetchTemplates,
   publicCardUrl,
 } from '../../../../lib/cards';
+import { fetchWalletAvailability } from '../../../../lib/presence';
 import { CardEditor } from './card-editor';
 
 export default async function CardEditorPage({
@@ -26,9 +27,12 @@ export default async function CardEditorPage({
   const organizationId = await activeOrganizationId();
 
   try {
-    const [card, templates] = await Promise.all([
+    const [card, templates, walletAvailability] = await Promise.all([
       fetchCard(organizationId, id),
       fetchTemplates(organizationId),
+      // فشلها لا يمنع المحرر: المحفظة إضافة على البطاقة لا شرط لتحريرها،
+      // وسقوطها إلى «غير متاح» يخفي الأزرار ولا يعطّل الشاشة.
+      fetchWalletAvailability(organizationId).catch(() => ({ apple: false, google: false })),
     ]);
 
     return (
@@ -37,6 +41,7 @@ export default async function CardEditorPage({
         templates={templates}
         publicUrl={publicCardUrl(card.slug)}
         uiLocale={locale}
+        walletAvailability={walletAvailability}
       />
     );
   } catch (error) {

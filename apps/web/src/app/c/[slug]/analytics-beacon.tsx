@@ -33,18 +33,33 @@ export function AnalyticsBeacon({
   slug,
   locale,
   apiUrl,
-  fromQr = false,
+  source,
+  campaignCode,
 }: {
   slug: string;
   locale: string;
   apiUrl: string;
-  /** فُتحت الصفحة من رمز QR مطبوع — يميّزه `?src=qr` في رابط الرمز. */
-  fromQr?: boolean;
+  /**
+   * نقطة التواصل التي جاءت منها الزيارة (§10.4).
+   *
+   * تصل في `?src=` من رابط الرمز أو من إعادة توجيه `/t/<code>`. غيابها
+   * زيارة مباشرة من رابط مُشارَك — ولا نخترع لها قيمة.
+   */
+  source?: string;
+  /** كود الحملة من `?k=`. يُترجم إلى حملة في الخادم لا هنا. */
+  campaignCode?: string;
 }) {
   const queue = useRef<QueuedEvent[]>([]);
 
   useEffect(() => {
     const endpoint = `${apiUrl}/api/v1/public/cards/${encodeURIComponent(slug)}/events`;
+
+    // الإسناد خاصية الزيارة لا الحدث: يُرسل مرة مع الدفعة لا مع كل
+    // نقرة، فلا يتضاعف حجم الطلب في أكثر مسارات المنصة استدعاءً.
+    const attribution =
+      source || campaignCode
+        ? { ...(source ? { source } : {}), ...(campaignCode ? { campaignCode } : {}) }
+        : undefined;
 
     const flush = () => {
       const events = queue.current;
@@ -55,7 +70,7 @@ export function AnalyticsBeacon({
         void fetch(endpoint, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ events }),
+          body: JSON.stringify(attribution ? { events, attribution } : { events }),
           keepalive: true,
           // القياس لا يحمل جلسة ولا يحتاجها.
           credentials: 'omit',
@@ -71,7 +86,9 @@ export function AnalyticsBeacon({
       if (immediate) flush();
     };
 
-    if (fromQr) push({ type: 'qr_scan' });
+    // المسح من رمز مطبوع أو من وسم NFC كلاهما `qr_scan`: الحدث يقيس
+    // «وصل من شيء مادي»، والتمييز بينهما موجود في بُعد المصدر.
+    if (source === 'qr' || source === 'nfc') push({ type: 'qr_scan' });
     push({ type: 'view' }, true);
 
     const onClick = (event: MouseEvent) => {
@@ -102,7 +119,7 @@ export function AnalyticsBeacon({
       document.removeEventListener('visibilitychange', onHide);
       flush();
     };
-  }, [slug, locale, apiUrl, fromQr]);
+  }, [slug, locale, apiUrl, source, campaignCode]);
 
   return null;
 }

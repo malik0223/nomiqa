@@ -26,6 +26,15 @@ export type AnalyticsMetric = (typeof ANALYTICS_METRICS)[number];
  *
  * الـslug لا معرّف البطاقة: المعرّف لا يظهر في أي مكان يراه الزائر،
  * وتمريره عبر المتصفح يكشف مفتاحاً داخلياً بلا فائدة.
+ *
+ * **ومفاتيحه أسماء أعمدة `analytics_ingest` حرفياً.**
+ * `jsonb_to_recordset` تطابق بالاسم، فالدالة تعلن أعمدتها بـcamelCase
+ * مقتبسة لتطابق هذا العقد — قرار متّخذ في مهاجرة
+ * `20260816020000_analytics_ingest_keys` بعد خلل أسقط كل حدث بصمت.
+ *
+ * إعادة تسمية حقل هنا توجب تعديل الدالة في مهاجرة جديدة، وإلا
+ * يصل العمود NULL ويُسقط الصف **بلا خطأ واحد في السجلات**.
+ * يحرسه اختبار تكامل في `presence.integration.test.ts`.
  */
 export interface AnalyticsIngestEvent {
   slug: string;
@@ -36,6 +45,21 @@ export interface AnalyticsIngestEvent {
   locale: string | null;
   referrerHost: string | null;
   deviceType: string | null;
+  /**
+   * مصدر الزيارة كما وصل من الصفحة العامة (§10.4).
+   *
+   * قيمة من `SHARE_SOURCES` أو null لصف كُتب قبل وجود الإسناد.
+   */
+  source: string | null;
+  /**
+   * كود الحملة لا معرّفها.
+   *
+   * الترجمة إلى معرّف تحدث في دالة الإدراج داخل قاعدة البيانات: مسار
+   * الاستقبال العام لا يستعلم عن شيء — وهو الشرط الذي جعل تحميل
+   * الصفحة العامة رخيصاً منذ المرحلة 3. وكود لا يقابله حملة نشطة
+   * يسقط إلى null بدل أن يُسقط الحدث كله.
+   */
+  campaignCode: string | null;
   occurredAt: string;
 }
 
@@ -85,12 +109,32 @@ export interface AnalyticsCardBreakdown {
   formSubmits: number;
 }
 
+/**
+ * توزيع الزيارات على نقاط التواصل (§10.4).
+ *
+ * يجيب عن السؤال الذي لا تجيب عنه أرقام المشاهدات: **أي نقطة تواصل
+ * تعمل فعلاً؟** وسم NFC في مكتب الاستقبال، أو رمز على لافتة، أو رابط
+ * في توقيع البريد — الإنفاق عليها يختلف، فيجب أن يختلف قياسها.
+ */
+export interface AnalyticsSourceBreakdown {
+  /** قيمة من `SHARE_SOURCES`. */
+  source: string;
+  views: number;
+}
+
 export interface AnalyticsOverview {
   range: { from: string; to: string };
   summary: AnalyticsSummary;
   series: AnalyticsSeriesPoint[];
   topLinks: AnalyticsTopLink[];
   cards: AnalyticsCardBreakdown[];
+  /**
+   * الزيارات المعروف مصدرها فقط.
+   *
+   * مجموعها أقل من `summary.views` دائماً: الزيارة المباشرة من رابط
+   * مُشارَك لا تحمل مصدراً، وحشوها في فئة «أخرى» كان يوحي بقياس لم يقع.
+   */
+  sources: AnalyticsSourceBreakdown[];
   /**
    * آخر لحظة اكتمل فيها التجميع.
    *

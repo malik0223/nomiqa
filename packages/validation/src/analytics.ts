@@ -1,5 +1,6 @@
 import { CARD_EVENT_TYPES } from '@nomiqa/contracts';
 import { z } from 'zod';
+import { attributionSchema } from './presence.js';
 import { localeSchema, uuidSchema } from './primitives.js';
 
 /**
@@ -29,6 +30,14 @@ export const analyticsEventSchema = z
 export const analyticsBatchSchema = z
   .object({
     events: z.array(analyticsEventSchema).min(1, 'لا أحداث').max(20, 'دفعة كبيرة جداً'),
+    /**
+     * إسناد الزيارة (§10.4). اختياري: زيارة مباشرة لا تحمله.
+     *
+     * حقل واحد للدفعة لا حقل لكل حدث: مصدر الزيارة لا يتغير بين نقرة
+     * وأخرى في الجلسة نفسها، وتكراره في عشرين حدثاً كان يضاعف حجم
+     * الطلب في أكثر مسارات المنصة استدعاءً.
+     */
+    attribution: attributionSchema.optional(),
   })
   .strict();
 

@@ -79,6 +79,12 @@ export class AnalyticsIngestService implements OnModuleInit, OnModuleDestroy {
     const deviceType = context.userAgent ? deviceTypeOf(context.userAgent) : null;
     const referrerHost = referrerHostOf(context.referrer);
 
+    // الإسناد خاصية الزيارة لا الحدث، فيصل مرة واحدة ويُنسخ على كل
+    // حدث في الدفعة: التخزين على مستوى الصف هو ما يجعل التجميع لاحقاً
+    // استعلاماً واحداً بلا انضمام إلى جدول جلسات لا وجود له.
+    const source = input.attribution?.source ?? null;
+    const campaignCode = input.attribution?.campaignCode ?? null;
+
     const events: AnalyticsIngestEvent[] = input.events.map((event) => ({
       slug,
       type: event.type,
@@ -89,6 +95,10 @@ export class AnalyticsIngestService implements OnModuleInit, OnModuleDestroy {
       locale: event.locale ?? null,
       referrerHost,
       deviceType,
+      source,
+      // الكود لا المعرّف: ترجمته تحدث في دالة الإدراج داخل قاعدة
+      // البيانات، فيبقى هذا المسار بلا استعلام واحد.
+      campaignCode,
       // الوقت من الخادم لا من العميل: ساعة الجهاز قابلة للضبط، وقبولها
       // يسمح بكتابة أحداث في الماضي تشوّه تقرير شهر مضى.
       occurredAt: at.toISOString(),

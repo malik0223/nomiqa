@@ -9,6 +9,7 @@ import {
   type CardDetail,
   type CardSection,
   type TemplateSummary,
+  type WalletAvailability,
 } from '@nomiqa/contracts';
 import {
   deleteCardAction,
@@ -21,6 +22,7 @@ import { ImageField } from './image-field';
 import { LinksEditor } from './links-editor';
 import { PreviewPane } from './preview-pane';
 import { ShareBox } from './share-box';
+import { WalletBox } from './wallet-box';
 import { toFormValues, toPayload, toPreviewSnapshot, type CardFormValues } from './form-types';
 
 /** تأخير الحفظ التلقائي. قصير بما يكفي ليُطمئن، وطويل بما يكفي ألا يحفظ كل حرف. */
@@ -31,11 +33,14 @@ export function CardEditor({
   templates,
   publicUrl,
   uiLocale,
+  walletAvailability,
 }: {
   card: CardDetail;
   templates: TemplateSummary[];
   publicUrl: string;
   uiLocale: string;
+  /** المحافظ المضبوطة على هذه المنصة (§10.2). */
+  walletAvailability: WalletAvailability;
 }) {
   const t = useTranslations();
   const router = useRouter();
@@ -508,6 +513,14 @@ export function CardEditor({
           ) : null}
 
           {status === 'published' ? <ShareBox publicUrl={publicUrl} slug={card.slug} /> : null}
+
+          {/*
+            بعد النشر فقط: بطاقة المحفظة تحمل رمزاً يشير إلى الرابط
+            العام، وإصدارها قبل النشر يضع في جيب المتلقي رمزاً معطّلاً.
+          */}
+          {status === 'published' ? (
+            <WalletBox cardId={card.id} availability={walletAvailability} />
+          ) : null}
         </aside>
       </div>
     </div>

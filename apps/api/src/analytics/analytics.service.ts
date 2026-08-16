@@ -3,9 +3,11 @@ import type {
   AnalyticsCardBreakdown,
   AnalyticsOverview,
   AnalyticsSeriesPoint,
+  AnalyticsSourceBreakdown,
   AnalyticsSummary,
   AnalyticsTopLink,
 } from '@nomiqa/contracts';
+import { ATTRIBUTION_METRICS } from '@nomiqa/contracts';
 import { withRlsContext } from '@nomiqa/database';
 import { ANALYTICS_RANGE_DAYS, type AnalyticsQueryInput } from '@nomiqa/validation';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -52,6 +54,7 @@ export class AnalyticsService {
         series: buildSeries([], from, days),
         topLinks: [],
         cards: [],
+        sources: [],
         updatedAt: null,
       };
     }
@@ -120,6 +123,7 @@ export class AnalyticsService {
       series: buildSeries(rollups, from, days),
       topLinks: await this.topLinks(organizationId, rollups),
       cards: await this.cardBreakdown(organizationId, rollups, cardIds),
+      sources: buildSourceBreakdown(rollups),
       updatedAt: updatedAt?.toISOString() ?? null,
     };
   }
@@ -248,6 +252,25 @@ export class AnalyticsService {
 // ---------------------------------------------------------------
 // حساب
 // ---------------------------------------------------------------
+
+/**
+ * توزيع الزيارات على نقاط التواصل (§10.4).
+ *
+ * يُبنى من مقياس `source_view` في التجميعات نفسها: بُعد الصف هو المصدر،
+ * فلا استعلام إضافي ولا مسح على الأحداث الخام.
+ */
+function buildSourceBreakdown(rollups: RollupRow[]): AnalyticsSourceBreakdown[] {
+  const totals = new Map<string, number>();
+
+  for (const row of rollups) {
+    if (row.metric !== ATTRIBUTION_METRICS.SOURCE_VIEW || row.dimension === '') continue;
+    totals.set(row.dimension, (totals.get(row.dimension) ?? 0) + row.count);
+  }
+
+  return [...totals.entries()]
+    .map(([source, views]) => ({ source, views }))
+    .sort((first, second) => second.views - first.views);
+}
 
 function emptySummary(): AnalyticsSummary {
   return {

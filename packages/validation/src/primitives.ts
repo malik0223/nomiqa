@@ -39,6 +39,14 @@ export const RESERVED_SLUGS = [
   'vcard',
   'contacts',
   'analytics',
+  // مسارات المرحلة 5: `t` هو مسار أهداف المشاركة (وسوم NFC والحملات)،
+  // وهو أقصر مقطع في المنصة وأكثرها طباعةً على وسوم مادية — فحجزه
+  // ليس احتياطاً بل شرط ألا يبتلعه slug بطاقة يوماً ما.
+  't',
+  'nfc',
+  'wallet',
+  'signature',
+  'campaigns',
 ] as const;
 
 export const localeSchema = z.enum(['ar', 'en']);

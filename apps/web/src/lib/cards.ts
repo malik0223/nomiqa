@@ -73,8 +73,12 @@ export async function fetchPublicCard(slug: string): Promise<PublicCardPage | nu
   return (await response.json()) as PublicCardPage;
 }
 
+/** أصل التطبيق بلا شرطة ختامية. مصدر واحد لكل رابط عام تبنيه الواجهة. */
+export function appBaseUrl(): string {
+  return (process.env.APP_BASE_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+}
+
 /** الرابط العام الثابت. لا يتغير بتحديث البطاقة — وعليه يعتمد كل QR مطبوع. */
 export function publicCardUrl(slug: string): string {
-  const base = (process.env.APP_BASE_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
-  return `${base}/${slug}`;
+  return `${appBaseUrl()}/${slug}`;
 }
