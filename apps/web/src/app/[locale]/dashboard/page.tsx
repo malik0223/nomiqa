@@ -84,6 +84,23 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
           >
             {t('contacts.title')}
           </Link>
+
+          {/* شاشات المرحلة 4. تظهر للجميع ويحكمها الـAPI: إخفاؤها
+              بحسب الصلاحية هنا كان سيتطلب قراءة الصلاحيات في كل تحميل
+              للوحة، والرفض من الخادم هو الحدّ الحقيقي على أي حال. */}
+          <Link
+            href="/team"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('team.title')}
+          </Link>
+          <Link
+            href="/billing"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('billing.title')}
+          </Link>
+
           <a
             href="/auth/logout"
             className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"

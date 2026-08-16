@@ -20,6 +20,7 @@
 | ADR-011 | REST API قبل GraphQL                           | Accepted     | —                                             |
 | ADR-012 | PWA قبل تطبيقات الهاتف الأصلية                 | Accepted     | —                                             |
 | ADR-013 | **دلو عام منفصل لوسائط البطاقات المنشورة**     | **Accepted** | [ADR-013](ADR-013-published-card-media.md)    |
+| ADR-014 | **اعتماد Thawani بوابةً للدفع**                | **Accepted** | [ADR-014](ADR-014-payment-gateway.md)         |
 
 > القرارات من ADR-001 إلى ADR-009 وADR-011 وADR-012 موثقة حالياً داخل
 > [وثيقة المعمارية §16](../../Digital_Business_Card_SaaS_Technical_Architecture_AR.md).
@@ -31,8 +32,10 @@
 | ---------------------------------- | ---------------------------------------------- | ---------------------- |
 | مزوّد الاستضافة والمنطقة الجغرافية | يحدد منطقة Auth0 Tenant التي لا تتغير لاحقاً   | ADR-010، إعداد الإنتاج |
 | اسم النطاق                         | يلزم لتهيئة Callback URLs في Auth0 وشهادات TLS | نشر Staging            |
-| بوابة الدفع                        | يحدد تصميم Billing Module                      | المرحلة 4              |
 | الهوية البصرية                     | يحدد Design Tokens وقوالب البطاقات             | المرحلة 2              |
+
+> **بوابة الدفع** حُسمت في [ADR-014](ADR-014-payment-gateway.md) — Thawani
+> خلف واجهة `PaymentProvider` مجرّدة.
 
 > القوالب الثلاثة الحالية (`classic` · `minimal` · `bold`) مبنية على الرموز
 > المؤقتة في `packages/ui/src/styles.css`. اعتماد الهوية البصرية يغيّر القيم
