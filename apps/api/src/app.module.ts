@@ -14,15 +14,19 @@ import { HttpExceptionFilter } from './common/http-exception.filter.js';
 import { RateLimitGuard } from './common/rate-limit.guard.js';
 import { RequestIdMiddleware } from './common/request-id.middleware.js';
 import { ContactsModule } from './contacts/contacts.module.js';
+import { EventsModule } from './events/events.module.js';
 import { FeatureFlagsModule } from './feature-flags/feature-flags.module.js';
 import { FilesModule } from './files/files.module.js';
 import { HealthController } from './health/health.controller.js';
+import { ApiKeyGuard } from './integrations/api-key.guard.js';
+import { IntegrationsModule } from './integrations/integrations.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PresenceModule } from './presence/presence.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { PrivacyModule } from './privacy/privacy.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { ScansModule } from './scans/scans.module.js';
 import { SignaturesModule } from './signatures/signatures.module.js';
 import { SupportModule } from './support/support.module.js';
 import { TeamsModule } from './teams/teams.module.js';
@@ -54,6 +58,9 @@ import { WalletsModule } from './wallets/wallets.module.js';
     PresenceModule,
     SignaturesModule,
     WalletsModule,
+    EventsModule,
+    ScansModule,
+    IntegrationsModule,
     PrivacyModule,
     SupportModule,
     AdminModule,
@@ -71,6 +78,10 @@ import { WalletsModule } from './wallets/wallets.module.js';
     // حدٌّ لكل مستخدم يحتاج حارساً ثانياً بعد المصادقة، ويُضاف عند
     // ظهور شكوى فعلية من مؤسسات تتشارك عنواناً واحداً.
     { provide: APP_GUARD, useClass: RateLimitGuard },
+    // مفتاح الـAPI قبل Auth0 (§11.4): مسار المفتاح لا يحمل رمز Auth0،
+    // وتركه للحارس التالي كان يرفضه قبل أن يصل إلى من يفهمه. الحارس
+    // يتخطى كل مسار غير معلَّم بـ@RequireApiScope، فلا يوسّع شيئاً.
+    { provide: APP_GUARD, useClass: ApiKeyGuard },
     { provide: APP_GUARD, useClass: Auth0JwtGuard },
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

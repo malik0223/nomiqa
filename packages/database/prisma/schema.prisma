@@ -103,6 +103,12 @@ model Organization {
   signatureTemplates SignatureTemplate[]
   walletPasses       WalletPass[]
 
+  events           Event[]
+  scanJobs         ScanJob[]
+  webhookEndpoints WebhookEndpoint[]
+  apiKeys          ApiKey[]
+  crmConnections   CrmConnection[]
+
   @@map("organizations")
 }
 
@@ -333,6 +339,7 @@ model Card {
   campaigns        Campaign[]
   walletPasses     WalletPass[]
   signatureProfile SignatureProfile?
+  eventCards       EventCard[]
 
   /// الـslug فريد عالمياً: يظهر في الرابط العام nomiqa.om/<slug>.
   @@unique([slug])
@@ -437,10 +444,20 @@ model Contact {
   /// قيم الحقول الاختيارية التي عرّفها صاحب البطاقة: { key: value }.
   customFields Json? @map("custom_fields")
 
-  /// card_form | manual | import
+  /// card_form | manual | import | scan | badge
   source String @default("card_form")
   /// اللغة التي مُلئ بها النموذج — تحدد لغة رسالة الشكر.
   locale String @default("ar")
+
+  /// الفعالية التي التُقط فيها (§11.3). تُشتق من بطاقة الفعالية
+  /// ونافذتها الزمنية لا من مدخل الزائر — نفس مبدأ إسناد الحملة.
+  eventId       String? @map("event_id") @db.Uuid
+  /// من التقاه. أساس مقارنة أداء الفريق ومالك العميل عند المزامنة.
+  /// null للاستيراد ولنماذج بطاقة بلا مالك.
+  ownerUserId   String? @map("owner_user_id") @db.Uuid
+  /// قيم حقول التأهيل: { key: value }. قيمٌ لا مراجع — حذف الحقل من
+  /// إعداد الفعالية لا يمحو ما جُمع في القاعة.
+  qualifiers    Json?   @map("qualifiers")
 
   /// new | in_progress | done | archived
   followUpStatus String    @default("new") @map("follow_up_status")
@@ -462,16 +479,21 @@ model Contact {
 
   organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   card         Card?            @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  event        Event?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
   consents     ContactConsent[]
   notes        ContactNote[]
   tags         ContactTag[]
   followUps    FollowUpTask[]
+  scanJobs     ScanJob[]
+  crmSyncLogs  CrmSyncLog[]
 
   @@index([organizationId, capturedAt(sort: Desc)])
   @@index([organizationId, followUpStatus, capturedAt(sort: Desc)])
   @@index([organizationId, cardId, capturedAt(sort: Desc)])
   @@index([organizationId, emailNormalized])
   @@index([organizationId, phoneNormalized])
+  @@index([organizationId, eventId, capturedAt(sort: Desc)])
+  @@index([organizationId, ownerUserId, capturedAt(sort: Desc)])
   @@map("contacts")
 }
 
@@ -1695,4 +1717,302 @@ model WalletPass {
   @@unique([cardId, platform])
   @@index([organizationId, platform])
   @@map("wallet_passes")
+}
+
+// ------------------------------------------------------------
+// المرحلة 6 — المبيعات والفعاليات والتكاملات (§11)
+// ------------------------------------------------------------
+
+/// فعالية أو معرض (§11.3).
+///
+/// نافذتها الزمنية ليست وصفاً بل **قاعدة إسناد**: التقاط يقع عبر بطاقة
+/// مخصصة للفعالية داخل نافذتها يُصنَّف إليها آلياً، وخارجها لا يُصنَّف.
+/// نفس مبدأ الحملة في المرحلة 5، وللسبب نفسه: البطاقة تبقى تعمل بعد
+/// انتهاء المعرض، وزائرها بعده ليس من عملائه.
+model Event {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  name     String
+  location String?
+
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt   DateTime @map("ends_at") @db.Timestamptz(6)
+
+  /// تعريف حقول التأهيل: [{ key, label, type, options, required }].
+  qualifiers Json @default("[]")
+
+  /// كلفة المشاركة بالبيسة — أساس «كلفة العميل المحتمل» في التقرير.
+  /// عدد صحيح كبقية مبالغ المنصة: لا رقم عشري يعبر أي حد (§9.4).
+  costBaisa   Int? @map("cost_baisa")
+  targetLeads Int? @map("target_leads")
+
+  /// أُرسل تقرير ما بعد الفعالية. عمود لا حساب: الإرسال فعل يقع مرة.
+  reportSentAt DateTime? @map("report_sent_at") @db.Timestamptz(6)
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cards        EventCard[]
+  contacts     Contact[]
+  scanJobs     ScanJob[]
+
+  @@index([organizationId, startsAt(sort: Desc)])
+  @@index([organizationId, endsAt])
+  @@map("events")
+}
+
+/// ربط بطاقة بفعالية.
+///
+/// جدول وصل لا عمود على البطاقة: البطاقة نفسها تشارك في معرض هذا العام
+/// ومعرض العام القادم، وعمودٌ واحد كان يمحو انتماءها الأول عند الثاني —
+/// فتُعاد نسبة عملاء معرض قديم إلى معرض جديد.
+model EventCard {
+  eventId        String @map("event_id") @db.Uuid
+  cardId         String @map("card_id") @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, cardId])
+  @@index([cardId])
+  @@index([organizationId])
+  @@map("event_cards")
+}
+
+/// عملية مسح بطاقة ورقية أو شارة معرض (§11.2).
+///
+/// الصف يعيش بين الصورة وجهة الاتصال، ووجوده منفصلاً هو ما يجعل
+/// **المراجعة قبل الحفظ** ممكنة: مخرَج التعرّف الضوئي ينزل هنا لا في
+/// `contacts`، ولا يصير جهة اتصال إلا بعد أن يؤكّده إنسان.
+///
+/// والصورة تُحذف عند الحفظ أو الإهمال لا بعد مدة: هي بيانات شخصية
+/// لطرف ثالث، وبعد استخراج حقولها لم يبقَ سبب لحفظها.
+model ScanJob {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  eventId        String? @map("event_id") @db.Uuid
+  /// الملف المرفوع. null بعد حذف الصورة — والصف يبقى للسجل.
+  fileId         String? @map("file_id") @db.Uuid
+
+  /// business_card | badge | qr
+  kind   String @default("business_card")
+  /// pending | processing | review | saved | failed | discarded
+  status String @default("pending")
+
+  /// الحقول المستخرجة بثقتها: { field: { value, confidence } }.
+  /// **لا نص خام**: النص الكامل للبطاقة يحمل ما لم نطلبه ولا نعرضه.
+  extracted  Json?
+  confidence Float?
+
+  /// سبب الفشل بلغة المستخدم. لا يحمل شيئاً من محتوى الصورة.
+  error String?
+
+  contactId       String?   @map("contact_id") @db.Uuid
+  imageDeletedAt  DateTime? @map("image_deleted_at") @db.Timestamptz(6)
+  createdByUserId String?   @map("created_by_user_id") @db.Uuid
+
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt(sort: Desc)])
+  @@index([organizationId, createdByUserId, createdAt(sort: Desc)])
+  @@index([eventId])
+  @@map("scan_jobs")
+}
+
+/// مفتاح وصول للـAPI العام (§11.4 خطوة 1).
+///
+/// نخزّن **تجزئة** المفتاح لا قيمته: قاعدة بيانات مسرّبة لا تسلّم
+/// مفاتيح صالحة. والبادئة مخزَّنة صريحةً لأنها ما يميّز المفتاح في
+/// السجلات وفي أدوات كشف الأسرار المسرّبة، ولا تكفي لاستخدامه.
+model ApiKey {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  name      String
+  prefix    String
+  tokenHash String @map("token_hash")
+
+  /// نطاقات المفتاح. مستقلة عن صلاحيات المستخدمين تماماً — المفتاح
+  /// يمثّل نظاماً لا شخصاً، ولا يرث دور من أنشأه.
+  scopes String[]
+
+  lastUsedAt      DateTime? @map("last_used_at") @db.Timestamptz(6)
+  expiresAt       DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedByUserId String?   @map("revoked_by_user_id") @db.Uuid
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// التجزئة فريدة عالمياً: البحث عنها يقع **قبل** وجود أي سياق مؤسسة.
+  @@unique([tokenHash])
+  @@index([organizationId, revokedAt])
+  @@map("api_keys")
+}
+
+/// وجهة Webhook تشترك في أحداث المؤسسة (§11.4 خطوة 1).
+model WebhookEndpoint {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  url         String
+  description String?
+
+  /// سرّ التوقيع. مخزَّن صريحاً لا مجزّأً لأنه **مفتاح توقيع** يجب أن
+  /// نملكه لنوقّع به كل تسليم — خلافاً لمفتاح الـAPI الذي نتحقق منه
+  /// ولا نُنتجه. حمايته من RLS ومن كونه لا يُعاد عرضه بعد الإنشاء.
+  secret String
+
+  eventTypes String[] @map("event_types")
+  isActive   Boolean  @default(true) @map("is_active")
+
+  /// الإيقاف الآلي بعد فشل متكرر (§11.4). وجهة معطّلة تولّد طابوراً
+  /// لا نهائياً من المحاولات، وإيقافها إعلان صريح بدل تسليم صامت
+  /// إلى العدم.
+  consecutiveFailures Int       @default(0) @map("consecutive_failures")
+  disabledAt          DateTime? @map("disabled_at") @db.Timestamptz(6)
+  disabledReason      String?   @map("disabled_reason")
+
+  lastSuccessAt DateTime? @map("last_success_at") @db.Timestamptz(6)
+  lastFailureAt DateTime? @map("last_failure_at") @db.Timestamptz(6)
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([organizationId, isActive])
+  @@map("webhook_endpoints")
+}
+
+/// محاولة تسليم واحدة إلى وجهة.
+///
+/// صف لكل (وجهة، حدث) لا لكل محاولة: المحاولات عدّاد على الصف نفسه،
+/// والفريد عليهما هو ما يجعل إعادة تشغيل المرسل لا تُنتج تسليماً
+/// مكرراً — الشرط الذي يعتمد عليه المستقبِل ليكون Idempotent.
+model WebhookDelivery {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  endpointId     String @map("endpoint_id") @db.Uuid
+
+  eventType String @map("event_type")
+  /// معرّف حدث الـOutbox الأصلي. يظهر في ترويسة التسليم ليطابقه
+  /// المستقبِل ويتجاهل ما عالجه.
+  eventId   String @map("event_id") @db.Uuid
+  payload   Json
+
+  /// pending | delivered | failed
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime? @map("next_attempt_at") @db.Timestamptz(6)
+  responseStatus Int?      @map("response_status")
+  error          String?
+  deliveredAt    DateTime? @map("delivered_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@unique([endpointId, eventId])
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("webhook_deliveries")
+}
+
+/// وصلة إلى نظام CRM خارجي (§11.5).
+///
+/// المزامنة **باتجاه واحد** في هذه المرحلة: منّا إليهم. الاتجاه الثاني
+/// يعني أن نظاماً خارجياً يكتب في جهات اتصالنا، وقرار من يفوز عند
+/// التعارض لا يُتخذ قبل أن نرى كيف تستخدمه أول مؤسسة فعلاً.
+model CrmConnection {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  /// hubspot
+  provider String
+  /// active | paused | error
+  status   String @default("active")
+
+  /// رمز الوصول إلى نظام العميل. سرّ طرف ثالث: لا يُعاد إلى المتصفح
+  /// أبداً ولا يدخل أي سجل، ويُستبدل ولا يُعرض.
+  accessToken String @map("access_token")
+
+  /// خريطة الحقول: { حقلنا: اسم الحقل عندهم }.
+  fieldMap Json @map("field_map")
+
+  /// capturer | fixed | unassigned
+  ownerStrategy String  @default("capturer") @map("owner_strategy")
+  ownerRef      String? @map("owner_ref")
+
+  /// يقتصر الإرسال على من منح الموافقة التسويقية. مطفأ افتراضياً لأن
+  /// المزامنة نفسها ليست تسويقاً — والمؤسسة وحدها تعرف ما يلزم سياستها.
+  marketingConsentOnly Boolean @default(false) @map("marketing_consent_only")
+
+  lastSyncAt DateTime? @map("last_sync_at") @db.Timestamptz(6)
+  lastError  String?   @map("last_error")
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  logs         CrmSyncLog[]
+
+  /// وصلة واحدة لكل مزوّد: وصلتان إلى HubSpot نفسه تعنيان صفّين
+  /// متنافسين على العميل نفسه في النظام البعيد.
+  @@unique([organizationId, provider])
+  @@map("crm_connections")
+}
+
+/// حالة مزامنة جهة اتصال واحدة (§11.5 — سجل بحالة المزامنة).
+///
+/// صف لكل (وصلة، جهة اتصال): هو نفسه **مانع التكرار**. المزامنة
+/// المعادة تجد الصف وتحدّثه بدل أن تُنشئ عميلاً ثانياً في نظام العميل
+/// — وهو الفشل الذي لا يُغتفر في مزامنة CRM.
+model CrmSyncLog {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  connectionId   String @map("connection_id") @db.Uuid
+  contactId      String @map("contact_id") @db.Uuid
+
+  /// pending | success | failed | skipped
+  status    String  @default("pending")
+  /// create | update | skip_duplicate | skip_consent
+  operation String?
+  /// معرّف السجل في النظام البعيد. وجوده يحوّل كل مزامنة لاحقة تحديثاً.
+  remoteId  String? @map("remote_id")
+
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime? @map("next_attempt_at") @db.Timestamptz(6)
+  error         String?
+  syncedAt      DateTime? @map("synced_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  connection CrmConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  contact    Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, contactId])
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("crm_sync_logs")
 }

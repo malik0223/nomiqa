@@ -47,6 +47,13 @@ export const RESERVED_SLUGS = [
   'wallet',
   'signature',
   'campaigns',
+  // مسارات المرحلة 6: شاشات الفعاليات والمسح والتكاملات في التطبيق،
+  // ولا يجوز أن يبتلعها slug بطاقة يُنشأ لاحقاً.
+  'events',
+  'event',
+  'scan',
+  'integrations',
+  'webhooks',
 ] as const;
 
 export const localeSchema = z.enum(['ar', 'en']);

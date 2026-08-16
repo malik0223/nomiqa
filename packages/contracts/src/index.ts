@@ -11,6 +11,7 @@ export * from './contact.js';
 export * from './email.js';
 export * from './presence.js';
 export * from './privacy.js';
+export * from './sales.js';
 export * from './support.js';
 export * from './team.js';
 
@@ -148,6 +149,12 @@ export const OUTBOX_EVENT_TYPES = {
   INVOICE_PAID: 'invoice.paid',
   PAYMENT_FAILED: 'payment.failed',
   ORGANIZATION_SUSPENDED: 'organization.suspended',
+  // المرحلة 6
+  //
+  // الفعالية تُغلق مرةً واحدة ويُرسل تقريرها بعدها (§11.3). حدث لا
+  // مهمة مجدولة: الإغلاق يقع بمرور وقت النهاية، والـOutbox هو المسار
+  // الوحيد في المنصة الذي يحوّل واقعةً في قاعدة البيانات إلى فعل.
+  EVENT_ENDED: 'event.ended',
 } as const;
 
 export type OutboxEventType = (typeof OUTBOX_EVENT_TYPES)[keyof typeof OUTBOX_EVENT_TYPES];
@@ -163,6 +170,16 @@ export const QUEUE_NAMES = {
   /** استيراد الموظفين ودورة الفوترة وفحص النطاقات (§9.2 و§9.4). */
   EMPLOYEE_IMPORT: 'employee-import',
   BILLING_CYCLE: 'billing-cycle',
+  /**
+   * استخراج بيانات بطاقة ممسوحة (§11.2).
+   *
+   * طابور مستقل لأن حمله مختلف نوعاً: نداء شبكي إلى محرك تعرّف ضوئي
+   * يستغرق ثوانيَ لكل صورة. وضعه مع التكاملات كان يعني أن معرضاً
+   * يمسح مئة بطاقة في ساعة يؤخّر إشعار Webhook عن كل عميل آخر.
+   */
+  SCAN_EXTRACTION: 'scan-extraction',
+  /** تسليم Webhooks ومزامنة CRM — كلاهما نداء صادر قابل للفشل (§11.4). */
+  INTEGRATIONS: 'integrations',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

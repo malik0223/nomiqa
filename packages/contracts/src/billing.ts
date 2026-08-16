@@ -57,6 +57,17 @@ export const PLAN_FEATURES = [
   'email_signature',
   'meeting_backgrounds',
   'campaigns',
+  // المرحلة 6 — المبيعات والفعاليات والتكاملات (§11).
+  //
+  // الفصل هنا أهم منه في المرحلة 5: مؤسسة تشارك في معرضين سنوياً تريد
+  // الفعاليات ولا تريد مزامنة CRM، وفريق مبيعات موصول بـHubSpot يريد
+  // العكس. وضع الأربعة في «حزمة مبيعات» كان يجعل كل واحدة منها تُباع
+  // بسعر أعلاها.
+  'card_scanning',
+  'events',
+  'webhooks',
+  'public_api',
+  'crm_sync',
 ] as const;
 
 export type PlanFeature = (typeof PLAN_FEATURES)[number];

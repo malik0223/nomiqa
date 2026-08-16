@@ -15,6 +15,9 @@ export * from './branding.js';
 export * from './card.js';
 export * from './contact.js';
 export * from './presence.js';
+export * from './sales.js';
+export * from './scan-card-text.js';
+export * from './scan-qr-text.js';
 export * from './support.js';
 export * from './team.js';
 
@@ -24,8 +27,17 @@ export const DOCUMENT_MIME_TYPES = ['application/pdf'] as const;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
+/**
+ * صورة بطاقة ورقية ممسوحة (§11.2).
+ *
+ * أكبر من حدّ الصور العادي: صورة هاتف حديث لبطاقة صغيرة تحتاج دقة
+ * عالية ليقرأها محرك التعرّف، وضغطها إلى حدّ الصورة الشخصية يفقد
+ * الحروف الصغيرة — وهي بالضبط ما نريد قراءته.
+ */
+export const MAX_SCAN_BYTES = 12 * 1024 * 1024;
+
 /** غرض الملف. يحدد النوع المسموح والحجم الأقصى. */
-export const FILE_PURPOSES = ['avatar', 'logo', 'cover', 'document'] as const;
+export const FILE_PURPOSES = ['avatar', 'logo', 'cover', 'document', 'scan'] as const;
 export type FilePurpose = (typeof FILE_PURPOSES)[number];
 
 export const filePurposeRules: Record<
@@ -36,6 +48,7 @@ export const filePurposeRules: Record<
   logo: { mimeTypes: IMAGE_MIME_TYPES, maxBytes: MAX_IMAGE_BYTES },
   cover: { mimeTypes: IMAGE_MIME_TYPES, maxBytes: MAX_IMAGE_BYTES },
   document: { mimeTypes: DOCUMENT_MIME_TYPES, maxBytes: MAX_DOCUMENT_BYTES },
+  scan: { mimeTypes: IMAGE_MIME_TYPES, maxBytes: MAX_SCAN_BYTES },
 };
 
 /**

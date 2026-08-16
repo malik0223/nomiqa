@@ -94,10 +94,23 @@ export class ContactCaptureService {
     );
 
     await withRlsContext(this.prisma, { organizationId }, async (tx) => {
+      // إسناد الفعالية (§11.3): يُشتق من **البطاقة ونافذتها الزمنية**
+      // لا من مدخل الزائر — نفس مبدأ اشتقاق المؤسسة من الـslug واشتقاق
+      // الحملة من كودها (القاعدة 17). الدالة تعيش في قاعدة البيانات
+      // لأن الشرط نفسه يُقرأ من مسارات أخرى، ونسختان منه كانتا
+      // ستفترقان أول مرة يُعدَّل أحدهما.
+      const [attribution] = await tx.$queryRaw<Array<{ card_event_at: string | null }>>`
+        SELECT card_event_at(${target.card_id}::uuid, now())
+      `;
+
       const contact = await tx.contact.create({
         data: {
           organizationId,
           cardId: target.card_id,
+          eventId: attribution?.card_event_at ?? null,
+          // مالك البطاقة هو مالك العميل المحتمل: هو من وُضع رابطه على
+          // ما وُزّع في المعرض، وهو من يتابع. أساس مقارنة أداء الفريق.
+          ownerUserId: target.owner_user_id,
           fullName: input.fullName,
           email: input.email ?? null,
           phone: input.phone ?? null,

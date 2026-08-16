@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import { API_KEY_SCOPE_KEY } from '../integrations/api-key.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 import { UserProvisioningService } from './user-provisioning.service.js';
 
@@ -55,6 +56,17 @@ export class Auth0JwtGuard implements CanActivate {
       context.getClass(),
     ]);
     if (isPublic) {
+      return true;
+    }
+
+    // مسارات الـAPI العام بمفتاح (§11.4): هويتها مفتاح لا مستخدم،
+    // و`ApiKeyGuard` يتولاها بالكامل. تركها هنا كان يعني رفضها لغياب
+    // رمز Auth0 قبل أن يصل الطلب إلى الحارس الذي يفهمه.
+    const apiKeyScope = this.reflector.getAllAndOverride<string>(API_KEY_SCOPE_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (apiKeyScope) {
       return true;
     }
 

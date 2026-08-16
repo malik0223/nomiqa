@@ -317,6 +317,40 @@ const renderers: Record<EmailTemplate, Record<'ar' | 'en', Renderer>> = {
       text: `Your organization account is suspended. Reason: ${v.reason ?? ''}\n\n${v.supportUrl ?? ''}`,
     }),
   },
+
+  /**
+   * تقرير ما بعد الفعالية (§11.3).
+   *
+   * الأرقام في نص الرسالة لا خلف رابط: من يقرأها على هاتفه مساء آخر
+   * يوم معرض يريد أن يعرف كم عميلاً جُمع، لا أن يسجّل دخوله ليعرف.
+   * والرابط يبقى لمن يريد التفصيل ومقارنة أداء الفريق.
+   */
+  [EMAIL_TEMPLATES.EVENT_REPORT]: {
+    ar: (v) => ({
+      subject: `تقرير فعالية ${v.eventName ?? ''}`,
+      html: layout(
+        'ar',
+        'تقرير الفعالية',
+        `<h1 style="font-size:20px;margin:0 0 16px;">انتهت ${escapeHtml(v.eventName ?? '')}</h1>
+         <p style="line-height:1.7;color:#374151;">عدد العملاء المحتملين: <strong>${escapeHtml(v.leads ?? '0')}</strong></p>
+         <p style="line-height:1.7;color:#374151;">المؤهَّلون منهم: <strong>${escapeHtml(v.qualifiedLeads ?? '0')}</strong></p>
+         ${button(v.reportUrl, 'فتح التقرير الكامل')}`,
+      ),
+      text: `انتهت ${v.eventName ?? ''}. العملاء المحتملون: ${v.leads ?? '0'}\n\n${v.reportUrl ?? ''}`,
+    }),
+    en: (v) => ({
+      subject: `Event report: ${v.eventName ?? ''}`,
+      html: layout(
+        'en',
+        'Event report',
+        `<h1 style="font-size:20px;margin:0 0 16px;">${escapeHtml(v.eventName ?? '')} has ended</h1>
+         <p style="line-height:1.7;color:#374151;">Leads captured: <strong>${escapeHtml(v.leads ?? '0')}</strong></p>
+         <p style="line-height:1.7;color:#374151;">Qualified: <strong>${escapeHtml(v.qualifiedLeads ?? '0')}</strong></p>
+         ${button(v.reportUrl, 'Open the full report')}`,
+      ),
+      text: `${v.eventName ?? ''} has ended. Leads captured: ${v.leads ?? '0'}\n\n${v.reportUrl ?? ''}`,
+    }),
+  },
 };
 
 /**

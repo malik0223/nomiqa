@@ -6,8 +6,14 @@
  * docs/privacy/processing-records.md قبل أن يُخزَّن.
  */
 
-/** مصدر جهة الاتصال — يظهر في القائمة ويفسّر كيف وصلت. */
-export const CONTACT_SOURCES = ['card_form', 'manual', 'import'] as const;
+/**
+ * مصدر جهة الاتصال — يظهر في القائمة ويفسّر كيف وصلت.
+ *
+ * `scan` و`badge` من المرحلة 6: التقاط في العالم المادي لا عبر نموذج.
+ * تمييزهما عن `manual` ليس تجميلاً — سند الحفظ مختلف (بطاقة سُلّمت
+ * باليد لا موافقة مقروءة)، وكل تصدير أو مزامنة يجب أن يفرّق بينهما.
+ */
+export const CONTACT_SOURCES = ['card_form', 'manual', 'import', 'scan', 'badge'] as const;
 export type ContactSource = (typeof CONTACT_SOURCES)[number];
 
 export const CONTACT_FOLLOW_UP_STATUSES = ['new', 'in_progress', 'done', 'archived'] as const;
@@ -43,6 +49,19 @@ export const CONTACT_CONSENT_VERSION = '2026-08-16';
  * مدة تخزين مؤقت للصفحة العامة.
  */
 export const ACCEPTED_CONTACT_CONSENT_VERSIONS: readonly string[] = [CONTACT_CONSENT_VERSION];
+
+/**
+ * سند حفظ جهة اتصال التُقطت من بطاقة ورقية أو شارة معرض (§11.2).
+ *
+ * يُكتب في `consentTextVersion` مكان إصدار النص، لأن **لا نص هناك**:
+ * صاحب البطاقة سلّمها بيده في سياق مهني، وذاك هو السند — لا مربّع
+ * وافق عليه. تسجيله بهذه الصيغة الصريحة أصدق من ادّعاء موافقة مقروءة،
+ * ويُميّز الصف عند أي مراجعة أو طلب حذف.
+ *
+ * وأثره العملي مكتوب في المزامنة: الموافقة التسويقية لهذه الصفوف
+ * **غير ممنوحة**، فلا تدخل حملة بريدية إلا بموافقة لاحقة صريحة.
+ */
+export const CONTACT_BASIS_CARD_HANDOVER = 'card_handover:2026-08-19';
 
 export const FOLLOW_UP_TASK_STATUSES = ['open', 'done', 'cancelled'] as const;
 export type FollowUpTaskStatus = (typeof FOLLOW_UP_TASK_STATUSES)[number];

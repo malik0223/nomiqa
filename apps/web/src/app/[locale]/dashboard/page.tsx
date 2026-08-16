@@ -122,6 +122,28 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
             {t('campaigns.title')}
           </Link>
 
+          {/* شاشات المرحلة 6 — نفس القاعدة: الظهور للجميع والحدّ من
+              الخادم. المسح أولاً لأنه الشاشة الوحيدة هنا التي تُفتح
+              وقوفاً في قاعة معرض، لا من مكتب. */}
+          <Link
+            href="/scan"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('scan.title')}
+          </Link>
+          <Link
+            href="/events"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('events.title')}
+          </Link>
+          <Link
+            href="/integrations"
+            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+          >
+            {t('integrations.title')}
+          </Link>
+
           <a
             href="/auth/logout"
             className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"

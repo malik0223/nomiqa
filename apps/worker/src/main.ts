@@ -7,6 +7,7 @@ import {
   type AnalyticsIngestJobData,
   type EmailJobData,
   type EmployeeImportJobData,
+  type ScanExtractionJobData,
 } from '@nomiqa/contracts';
 import { createLogger } from '@nomiqa/observability';
 import { handleAccountDeletion, handleAccountDeletionFailure } from './account/deletion-handler.js';
@@ -21,6 +22,10 @@ import {
   handleStalePayments,
 } from './billing/cycle-handler.js';
 import { verifyPendingDomains } from './branding/domain-verifier.js';
+import { closeEndedEvents } from './events/close-handler.js';
+import { syncCrmContacts } from './integrations/crm-sync.js';
+import { dispatchWebhooks } from './integrations/webhook-dispatcher.js';
+import { handleScanExtraction, handleScanExtractionFailure } from './scans/handler.js';
 import { handleEmailFailure, handleEmailJob } from './email/handler.js';
 import {
   handleEmployeeImport,
@@ -52,6 +57,27 @@ const ROLLUP_INTERVAL_MS = 5 * 60_000;
 
 /** يومياً: التنظيف يمس صفوفاً قديمة، ولا شيء يستعجله. */
 const PURGE_INTERVAL_MS = 24 * 3_600_000;
+
+/**
+ * التكاملات: كل خمس ثوانٍ.
+ *
+ * أبطأ من الـOutbox (ثانيتان) وأسرع من كل ما عداه: التسليم يقع بين
+ * نظامين لا أمام مستخدم ينتظر، لكن العميل المحتمل الذي يصل الـCRM بعد
+ * دقيقة يُتابَع، وبعد ساعة يُنسى.
+ */
+const INTEGRATIONS_INTERVAL_MS = 5_000;
+
+/**
+ * إغلاق الفعاليات: كل ساعة.
+ *
+ * الدورة تبحث عمّا انتهى قبل ست ساعات، فتأخر ساعة في اكتشافه لا يغيّر
+ * شيئاً — والمعالج Idempotent فلا ضرر من تكرارها.
+ */
+const EVENT_CLOSE_INTERVAL_MS = 3_600_000;
+
+const WEBHOOK_DISPATCH_JOB = 'webhooks';
+const CRM_SYNC_JOB = 'crm-sync';
+const EVENT_CLOSE_JOB = 'close-events';
 
 /** أسماء المهام المجدولة على طابور التحليلات. */
 const ANALYTICS_ROLLUP_JOB = 'rollup';
@@ -153,6 +179,56 @@ const workers = [
   ),
 
   /**
+   * استخراج البطاقات الممسوحة (§11.2).
+   *
+   * توازٍ محدود بأربعة: كل مهمة نداء شبكي إلى محرك خارجي له حد معدل،
+   * ومعرض يمسح مئة بطاقة في ساعة يُنجَز بأربعة متوازية بلا أن يصطدم
+   * بحدّ المزوّد فتفشل الدفعة كلها.
+   */
+  new Worker<ScanExtractionJobData>(
+    QUEUE_NAMES.SCAN_EXTRACTION,
+    async (job) => {
+      logger.info({ jobId: job.id, scanJobId: job.data.scanJobId }, 'استخراج بطاقة ممسوحة');
+      await handleScanExtraction(job);
+    },
+    { connection, concurrency: 4 },
+  ),
+
+  /**
+   * التكاملات: تسليم Webhooks ومزامنة CRM وإغلاق الفعاليات (§11.4).
+   *
+   * طابور واحد لثلاث دورات: كلها نداءات صادرة إلى أنظمة لا نملكها،
+   * وتسلسلها يجعل انقطاع نظام عميل يؤخّر دورةً واحدة لا كل شيء.
+   */
+  new Worker(
+    QUEUE_NAMES.INTEGRATIONS,
+    async (job) => {
+      switch (job.name) {
+        case WEBHOOK_DISPATCH_JOB: {
+          const dispatched = await dispatchWebhooks();
+          if (dispatched > 0) {
+            logger.info({ dispatched }, 'سُلّمت أحداث Webhook');
+          }
+          return;
+        }
+        case CRM_SYNC_JOB: {
+          const synced = await syncCrmContacts();
+          if (synced > 0) {
+            logger.info({ synced }, 'عولجت مزامنات CRM');
+          }
+          return;
+        }
+        case EVENT_CLOSE_JOB:
+          await closeEndedEvents();
+          return;
+        default:
+          logger.warn({ name: job.name }, 'مهمة تكامل غير معروفة');
+      }
+    },
+    { connection, concurrency: 1 },
+  ),
+
+  /**
    * دورة الفوترة وفحص النطاقات (§9.3 و§9.4).
    *
    * طابور واحد لأربع مهام دورية: كلها تشغيلية بلا مستخدم ينتظرها،
@@ -192,7 +268,8 @@ const workers = [
 const outboxQueue = new Queue(QUEUE_NAMES.OUTBOX_DISPATCH, { connection });
 const analyticsQueue = new Queue(QUEUE_NAMES.ANALYTICS_INGEST, { connection });
 const billingQueue = new Queue(QUEUE_NAMES.BILLING_CYCLE, { connection });
-const schedulers = [outboxQueue, analyticsQueue, billingQueue];
+const integrationsQueue = new Queue(QUEUE_NAMES.INTEGRATIONS, { connection });
+const schedulers = [outboxQueue, analyticsQueue, billingQueue, integrationsQueue];
 
 // تفريغ السجل عند الاكتمال مقصود في الثلاث: مهمة دورية ناجحة لا قيمة
 // لتاريخها، وتراكمها يملأ Redis بما لا يُقرأ.
@@ -225,6 +302,18 @@ await analyticsQueue.add(
     removeOnFail: { count: 100 },
   },
 );
+
+for (const [name, interval] of [
+  [WEBHOOK_DISPATCH_JOB, INTEGRATIONS_INTERVAL_MS],
+  [CRM_SYNC_JOB, INTEGRATIONS_INTERVAL_MS],
+  [EVENT_CLOSE_JOB, EVENT_CLOSE_INTERVAL_MS],
+] as const) {
+  await integrationsQueue.add(
+    name,
+    {},
+    { repeat: { every: interval }, removeOnComplete: true, removeOnFail: { count: 100 } },
+  );
+}
 
 for (const [name, interval] of [
   [BILLING_RENEW_JOB, BILLING_INTERVAL_MS],
@@ -280,6 +369,17 @@ for (const worker of workers) {
       if (exhausted) {
         void handleEmployeeImportFailure(job as never, error).catch((failure: Error) =>
           logger.error({ error: failure.message }, 'تعذّر تسجيل فشل دفعة الاستيراد'),
+        );
+      }
+    }
+
+    if (worker.name === QUEUE_NAMES.SCAN_EXTRACTION) {
+      // مسحٌ يبقى «قيد المعالجة» إلى الأبد يظهر في شاشة المندوب
+      // دوّاراً لا ينتهي — بلا رسالة ولا إمكانية إدخال يدوي.
+      const exhausted = job !== undefined && job.attemptsMade >= (job.opts.attempts ?? 1);
+      if (exhausted) {
+        void handleScanExtractionFailure(job as never, error).catch((failure: Error) =>
+          logger.error({ error: failure.message }, 'تعذّر تسجيل فشل الاستخراج'),
         );
       }
     }

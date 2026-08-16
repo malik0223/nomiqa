@@ -19,6 +19,8 @@ const PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'billing:manage', description: 'تغيير الباقة والدفع والإلغاء' },
   { key: 'support:manage', description: 'فتح تذاكر الدعم ومتابعتها' },
   { key: 'presence:manage', description: 'إدارة وسوم NFC والحملات' },
+  { key: 'events:manage', description: 'إنشاء الفعاليات وقراءة تقاريرها' },
+  { key: 'integrations:manage', description: 'إدارة مفاتيح API وWebhooks ووصلات CRM' },
 ];
 
 /**
@@ -58,6 +60,10 @@ const SYSTEM_ROLES: Array<{
       'billing:read',
       'support:manage',
       'presence:manage',
+      'events:manage',
+      // `integrations:manage` للمالك وحده: المفتاح والوصلة يمنحان
+      // نظاماً خارجياً قراءة جهات اتصال المؤسسة كلها بلا جلسة ولا
+      // انتهاء صلاحية. قرار على هذا المستوى يبقى عند من يملك الحساب.
     ],
   },
   {
@@ -149,6 +155,7 @@ const PLANS: Array<{
       'email_signature',
       'meeting_backgrounds',
       'wallet_passes',
+      'card_scanning',
     ],
     trialDays: 14,
     isPublic: true,
@@ -185,6 +192,10 @@ const PLANS: Array<{
       'wallet_passes',
       'nfc_tags',
       'campaigns',
+      'card_scanning',
+      'events',
+      'webhooks',
+      'public_api',
     ],
     trialDays: 14,
     isPublic: true,
@@ -223,6 +234,11 @@ const PLANS: Array<{
       'wallet_passes',
       'nfc_tags',
       'campaigns',
+      'card_scanning',
+      'events',
+      'webhooks',
+      'public_api',
+      'crm_sync',
     ],
     trialDays: 0,
     // تُباع بالتفاوض: سعرها ليس رقماً واحداً يصلح لصفحة أسعار.

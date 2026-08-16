@@ -27,6 +27,10 @@ export const EMAIL_TEMPLATES = {
   PAYMENT_FAILED: 'payment_failed',
   /** تعليق حساب المؤسسة (§9.5). */
   ORGANIZATION_SUSPENDED: 'organization_suspended',
+
+  // ---------- المرحلة 6 ----------
+  /** تقرير ما بعد الفعالية (§11.3) — يصل بعد انتهائها بساعات. */
+  EVENT_REPORT: 'event_report',
 } as const;
 
 export type EmailTemplate = (typeof EMAIL_TEMPLATES)[keyof typeof EMAIL_TEMPLATES];

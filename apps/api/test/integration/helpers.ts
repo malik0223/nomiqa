@@ -30,6 +30,8 @@ export async function resetData(): Promise<void> {
       platform_audit_logs, platform_admins, feature_flag_overrides,
       analytics_rollups, card_events,
       follow_up_tasks, contact_tags, contact_notes, contact_consents,
+      crm_sync_logs, crm_connections, webhook_deliveries, webhook_endpoints,
+      api_keys, scan_jobs, event_cards, events,
       contacts, tags,
       support_messages, support_tickets,
       payments, payment_events, invoice_lines, invoices,

@@ -1,7 +1,9 @@
 import { EMAIL_TEMPLATES, OUTBOX_EVENT_TYPES } from '@nomiqa/contracts';
-import { getPrismaClient, withRlsContext } from '@nomiqa/database';
+import { Prisma, getPrismaClient, withRlsContext } from '@nomiqa/database';
 import { createLogger } from '@nomiqa/observability';
 import { enqueueEmail, idempotencyKeyFrom } from '../email/producer.js';
+import { queueCrmSync } from '../integrations/crm-sync.js';
+import { fanoutWebhooks } from '../integrations/webhook-fanout.js';
 
 const prisma = getPrismaClient();
 const logger = createLogger('outbox');
@@ -58,9 +60,21 @@ export async function dispatchOutbox(): Promise<number> {
 }
 
 async function handleEvent(event: ClaimedEvent): Promise<void> {
+  // بثّ الحدث إلى وجهات المؤسسة **قبل** أثره الداخلي (§11.4).
+  //
+  // الترتيب مقصود: البثّ لا ينشئ نداءً خارجياً هنا بل صفَّ تسليم،
+  // فكلفته قريبة من الصفر. ووضعه بعد إرسال البريد كان يعني أن فشل
+  // مزوّد البريد يمنع وصول الحدث إلى نظام العميل — وهما لا علاقة
+  // بينهما.
+  await fanoutWebhooks(event);
+
   switch (event.event_type) {
     case OUTBOX_EVENT_TYPES.CONTACT_CAPTURED:
       await handleContactCaptured(event);
+      return;
+
+    case OUTBOX_EVENT_TYPES.EVENT_ENDED:
+      await handleEventEnded(event);
       return;
 
     case OUTBOX_EVENT_TYPES.MEMBER_INVITED:
@@ -344,6 +358,71 @@ async function handleOrganizationSuspended(event: ClaimedEvent): Promise<void> {
 }
 
 /**
+ * تقرير ما بعد الفعالية (§11.3).
+ *
+ * يصل إلى أصحاب `events:manage` **على المؤسسة** وحدهم: التقرير يقارن
+ * أداء أعضاء الفريق بالاسم، وإرساله إلى كل من شارك في المعرض يجعل كل
+ * مندوب يقرأ ترتيبه بين زملائه في بريد لم يطلبه.
+ */
+async function handleEventEnded(event: ClaimedEvent): Promise<void> {
+  const organizationId = event.organization_id;
+  const eventId = asId(event.payload.eventId);
+
+  if (!organizationId || !eventId) {
+    throw new Error('حمولة event.ended ناقصة');
+  }
+
+  const record = await withRlsContext(prisma, { organizationId }, (tx) =>
+    tx.event.findFirst({ where: { id: eventId }, select: { name: true } }),
+  );
+
+  if (!record) {
+    logger.warn({ eventId }, 'الفعالية غير موجودة — يُتخطى الحدث');
+    return;
+  }
+
+  // المؤهَّلون يُحسبون هنا لا في مُنشئ الحدث: الحمولة تحمل معرّفات
+  // وعدداً واحداً، والأرقام التفصيلية تُقرأ من داخل سياق المؤسسة.
+  const [leads, qualified] = await withRlsContext(prisma, { organizationId }, async (tx) => [
+    await tx.contact.count({ where: { eventId, deletedAt: null } }),
+    await tx.contact.count({
+      where: { eventId, deletedAt: null, NOT: { qualifiers: { equals: Prisma.DbNull } } },
+    }),
+  ]);
+
+  const recipients = await withRlsContext(prisma, { organizationId }, (tx) =>
+    tx.organizationMembership.findMany({
+      where: {
+        status: 'active',
+        revokedAt: null,
+        roles: {
+          some: { role: { permissions: { some: { permission: { key: 'events:manage' } } } } },
+        },
+      },
+      include: { user: { select: { email: true, locale: true, deletedAt: true } } },
+    }),
+  );
+
+  for (const recipient of recipients) {
+    if (recipient.user.deletedAt) continue;
+
+    await enqueueEmail({
+      to: recipient.user.email,
+      template: EMAIL_TEMPLATES.EVENT_REPORT,
+      locale: recipient.user.locale === 'en' ? 'en' : 'ar',
+      variables: {
+        eventName: record.name,
+        leads: String(leads),
+        qualifiedLeads: String(qualified),
+        reportUrl: `${appBaseUrl()}/events/${eventId}`,
+      },
+      organizationId,
+      idempotencyKey: idempotencyKeyFrom('event-report', `${eventId}:${recipient.userId}`),
+    });
+  }
+}
+
+/**
  * مستلم رسائل الفوترة والحساب.
  *
  * بريد الفوترة المُعلَن أولاً، ثم مالك المؤسسة. إرسال إشعار مالي أو
@@ -426,6 +505,10 @@ async function handleContactCaptured(event: ClaimedEvent): Promise<void> {
     logger.warn({ contactId }, 'جهة الاتصال غير موجودة — يُتخطى الحدث');
     return;
   }
+
+  // المزامنة تُجدول قبل أي بريد: العميل المحتمل يجب أن يصل الـCRM في
+  // دقائق — وهو الفارق بين متابعة ساخنة ومكالمة بعد أسبوع (§11.5).
+  await queueCrmSync(organizationId, contactId);
 
   const locale = contact.locale === 'en' ? 'en' : 'ar';
   const ownerName =

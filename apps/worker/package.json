@@ -16,6 +16,7 @@
     "@nomiqa/contracts": "workspace:*",
     "@nomiqa/database": "workspace:*",
     "@nomiqa/observability": "workspace:*",
+    "@nomiqa/validation": "workspace:*",
     "@sentry/node": "^10.70.0",
     "bullmq": "^5.30.0",
     "ioredis": "^5.4.1",

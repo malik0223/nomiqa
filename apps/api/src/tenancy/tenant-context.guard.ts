@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import type { TenantContext } from '@nomiqa/contracts';
 import { withRlsContext } from '@nomiqa/database';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator.js';
+import { API_KEY_SCOPE_KEY } from '../integrations/api-key.decorator.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { NO_TENANT_KEY } from './no-tenant.decorator.js';
 
@@ -36,6 +37,16 @@ export class TenantContextGuard implements CanActivate {
       context.getClass(),
     ]);
     if (isPublic) {
+      return true;
+    }
+
+    // مسار مفتاح API: `ApiKeyGuard` بنى `request.tenant` من صف المفتاح
+    // نفسه، ولا عضوية تُقرأ لأن الطالب نظام لا شخص (§11.4).
+    const apiKeyScope = this.reflector.getAllAndOverride<string>(API_KEY_SCOPE_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (apiKeyScope) {
       return true;
     }
 
