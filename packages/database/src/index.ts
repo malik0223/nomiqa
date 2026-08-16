@@ -80,14 +80,50 @@ export const PERMISSIONS = {
   CARDS_READ: 'cards:read',
   CARDS_WRITE: 'cards:write',
   CARDS_PUBLISH: 'cards:publish',
+  /// الموافقة على طلبات تعديل البطاقات (§9.3).
+  CARDS_APPROVE: 'cards:approve',
   CONTACTS_READ: 'contacts:read',
   CONTACTS_EXPORT: 'contacts:export',
   ANALYTICS_READ: 'analytics:read',
   AUDIT_READ: 'audit:read',
+  /// قراءة دليل الموظفين.
+  DIRECTORY_READ: 'directory:read',
+  /// تعديل هوية المؤسسة وقوالبها وسياساتها.
+  BRANDING_MANAGE: 'branding:manage',
+  /// قراءة الاشتراك والفواتير.
+  BILLING_READ: 'billing:read',
+  /**
+   * تغيير الباقة والدفع والإلغاء.
+   *
+   * منفصلة عن القراءة عمداً: محاسب المؤسسة يحتاج الفواتير ولا يحتاج
+   * صلاحية خفض الباقة، ودمجهما كان يجعل كل من يطّلع على فاتورة قادراً
+   * على إلغاء الخدمة.
+   */
+  BILLING_MANAGE: 'billing:manage',
+  /// فتح تذاكر الدعم ومتابعتها.
+  SUPPORT_MANAGE: 'support:manage',
 } as const;
 
 export const SYSTEM_ROLES = {
   OWNER: 'owner',
   ADMIN: 'admin',
   MEMBER: 'member',
+  /**
+   * أدوار التفويض المحدود (§9.2).
+   *
+   * لا تُسنَد في membership_roles إطلاقاً — وجودها هناك يمنح صلاحياتها
+   * على المؤسسة كلها. مكانها membership_scopes مقيَّدةً بإدارة أو فرع.
+   */
+  DEPARTMENT_ADMIN: 'department_admin',
+  BRANCH_ADMIN: 'branch_admin',
 } as const;
+
+/** الأدوار التي لا يجوز إسنادها إلا بنطاق. */
+export const SCOPED_ONLY_ROLES: readonly string[] = [
+  SYSTEM_ROLES.DEPARTMENT_ADMIN,
+  SYSTEM_ROLES.BRANCH_ADMIN,
+];
+
+/** أنواع نطاق التفويض. */
+export const SCOPE_TYPES = { DEPARTMENT: 'department', BRANCH: 'branch' } as const;
+export type ScopeType = (typeof SCOPE_TYPES)[keyof typeof SCOPE_TYPES];

@@ -20,6 +20,9 @@ import {
 import { Prisma, withRlsContext } from '@nomiqa/database';
 import { slugifyName, type CreateCardInput, type UpdateCardInput } from '@nomiqa/validation';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { EntitlementsService } from '../billing/entitlements.service.js';
+import { BrandingService } from '../branding/branding.service.js';
+import { lockedFieldsTouched } from '../branding/card-policy.js';
 import { StorageService } from '../files/storage.service.js';
 import {
   buildSnapshot,
@@ -28,7 +31,6 @@ import {
   parseTheme,
   publishBlockers,
 } from './card-snapshot.js';
-import { maxCardsFor } from './entitlements.js';
 
 /** أعمدة الملف اللازمة لبناء رابط — لا نحمّل الصف كاملاً بلا داع. */
 interface MediaFile {
@@ -59,7 +61,45 @@ export class CardsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly quotas: EntitlementsService,
+    private readonly branding: BrandingService,
   ) {}
+
+  /**
+   * يرفض تعديلاً يمسّ حقلاً مقفلاً أو يتخطى سير موافقة مشترطاً.
+   *
+   * السياسة تُحلّ من موقع **مالك البطاقة** لا من موقع المعدِّل: القفل
+   * يحمي هوية الإدارة التي تمثّلها البطاقة.
+   */
+  private async assertPolicyAllows(
+    organizationId: string,
+    ownerUserId: string,
+    input: UpdateCardInput,
+  ): Promise<void> {
+    const policy = await this.branding.effectivePolicyForOwner(organizationId, ownerUserId);
+
+    if (policy.lockedFields.length === 0 && !policy.requireApproval) {
+      return;
+    }
+
+    const touched = lockedFieldsTouched(input as Record<string, unknown>, policy.lockedFields);
+
+    if (touched.length > 0) {
+      throw new ForbiddenException({
+        code: 'CARD_FIELD_LOCKED',
+        message: 'حقول مقفلة بسياسة المؤسسة — قدّم طلب موافقة لتعديلها',
+        lockedFields: touched,
+      });
+    }
+
+    if (policy.requireApproval) {
+      throw new ForbiddenException({
+        code: 'CARD_APPROVAL_REQUIRED',
+        message: 'تعديلات البطاقة في نطاقك تمر بموافقة — قدّم طلباً',
+        lockedFields: [],
+      });
+    }
+  }
 
   // ---------------------------------------------------------------
   // قراءة
@@ -101,22 +141,22 @@ export class CardsService {
     return this.toDetail(organizationId, card);
   }
 
+  /**
+   * حصة البطاقات.
+   *
+   * تُقرأ من محرك الحصص لا من عمود في المؤسسة: الاشتراك هو مصدر الحد
+   * منذ المرحلة الرابعة، ونوع المؤسسة ليس باقة.
+   */
   async entitlements(organizationId: string): Promise<CardEntitlements> {
-    const { organization, usedCards } = await withRlsContext(
-      this.prisma,
-      { organizationId },
-      async (tx) => ({
-        organization: await tx.organization.findUnique({ where: { id: organizationId } }),
-        usedCards: await tx.card.count({ where: { deletedAt: null } }),
-      }),
-    );
+    const quota = await this.quotas.quota(organizationId, 'maxCards');
 
-    if (!organization) {
-      throw new NotFoundException('المؤسسة غير موجودة');
-    }
-
-    const maxCards = maxCardsFor(organization);
-    return { maxCards, usedCards, canCreate: usedCards < maxCards };
+    return {
+      // الواجهة تعرض «مستخدم من الحد»، وبلا حد يُعرَض ‎-1 كما هو
+      // ويترجمه العميل إلى «غير محدود».
+      maxCards: quota.limit,
+      usedCards: quota.used,
+      canCreate: quota.canAdd,
+    };
   }
 
   /** القوالب المتاحة. مشتركة بين المؤسسات فلا تحتاج سياق RLS. */
@@ -249,13 +289,26 @@ export class CardsService {
    * المحرر يجعل نافذتين مفتوحتين على البطاقة نفسها حالة يومية، وبلا
    * هذا الفحص يفوز آخر من حفظ ويُمحى عمل الآخر بلا إشعار (§4.5).
    */
+  /**
+   * تعديل بطاقة.
+   *
+   * `bypassPolicy` يمرّره المستدعي الذي يملك `cards:approve` — محرر
+   * مسؤول، أو مسار الموافقة على طلب تعديل. الموظف العادي يُرفض تعديله
+   * لحقل مقفل برمز `CARD_FIELD_LOCKED`، وتترجمه الواجهة إلى «قدّم طلب
+   * موافقة» بدل رسالة رفض بلا مخرج (§9.3).
+   */
   async update(
     organizationId: string,
     userId: string,
     cardId: string,
     input: UpdateCardInput,
+    options: { bypassPolicy?: boolean } = {},
   ): Promise<CardDetail> {
     const card = await this.loadCard(organizationId, cardId);
+
+    if (!options.bypassPolicy) {
+      await this.assertPolicyAllows(organizationId, card.ownerUserId, input);
+    }
 
     if (card.revision !== input.revision) {
       throw new ConflictException(

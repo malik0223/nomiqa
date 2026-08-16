@@ -13,6 +13,20 @@ export const EMAIL_TEMPLATES = {
   CONTACT_CAPTURED: 'contact_captured',
   /** رسالة الشكر الآلية للزائر الذي شارك بياناته. */
   CONTACT_THANK_YOU: 'contact_thank_you',
+
+  // ---------- المرحلة 4 ----------
+  /** طلب تعديل بطاقة ينتظر مراجعة مسؤول (§9.3). */
+  CHANGE_REQUEST_SUBMITTED: 'change_request_submitted',
+  /** نتيجة مراجعة طلب التعديل — تصل إلى مقدّمه. */
+  CHANGE_REQUEST_REVIEWED: 'change_request_reviewed',
+  /** فاتورة صدرت وتنتظر السداد (§9.4). */
+  INVOICE_ISSUED: 'invoice_issued',
+  /** إيصال سداد. */
+  INVOICE_PAID: 'invoice_paid',
+  /** فشل تحصيل — تبدأ مهلة السماح. */
+  PAYMENT_FAILED: 'payment_failed',
+  /** تعليق حساب المؤسسة (§9.5). */
+  ORGANIZATION_SUSPENDED: 'organization_suspended',
 } as const;
 
 export type EmailTemplate = (typeof EMAIL_TEMPLATES)[keyof typeof EMAIL_TEMPLATES];

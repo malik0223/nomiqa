@@ -6,6 +6,7 @@ import {
   type AccountDeletionJobData,
   type AnalyticsIngestJobData,
   type EmailJobData,
+  type EmployeeImportJobData,
 } from '@nomiqa/contracts';
 import { createLogger } from '@nomiqa/observability';
 import { handleAccountDeletion, handleAccountDeletionFailure } from './account/deletion-handler.js';
@@ -14,7 +15,17 @@ import {
   handleAnalyticsPurge,
   handleAnalyticsRollup,
 } from './analytics/handler.js';
+import {
+  handleBillingExpirations,
+  handleBillingRenewals,
+  handleStalePayments,
+} from './billing/cycle-handler.js';
+import { verifyPendingDomains } from './branding/domain-verifier.js';
 import { handleEmailFailure, handleEmailJob } from './email/handler.js';
+import {
+  handleEmployeeImport,
+  handleEmployeeImportFailure,
+} from './teams/import-handler.js';
 import { closeEmailProducer, initEmailProducer } from './email/producer.js';
 import { closeTransporter } from './email/transport.js';
 import { dispatchOutbox } from './outbox/dispatcher.js';
@@ -45,6 +56,23 @@ const PURGE_INTERVAL_MS = 24 * 3_600_000;
 /** أسماء المهام المجدولة على طابور التحليلات. */
 const ANALYTICS_ROLLUP_JOB = 'rollup';
 const ANALYTICS_PURGE_JOB = 'purge';
+
+/**
+ * دورة الفوترة: كل ساعة.
+ *
+ * ليست يومية رغم أن الاستحقاقات يومية: تسوية جلسات الدفع المنتهية
+ * تجري في الدورة نفسها، وترك فاتورة بجلسة «معلّقة» ميتة ليوم كامل
+ * يمنع العميل من فتح جلسة جديدة لها.
+ */
+const BILLING_INTERVAL_MS = 3_600_000;
+
+/** فحص النطاقات: كل ربع ساعة. انتشار DNS يقاس بالدقائق لا بالثواني. */
+const DOMAIN_CHECK_INTERVAL_MS = 15 * 60_000;
+
+const BILLING_RENEW_JOB = 'renew';
+const BILLING_EXPIRE_JOB = 'expire';
+const BILLING_STALE_JOB = 'stale-payments';
+const DOMAIN_VERIFY_JOB = 'verify-domains';
 
 /**
  * نقطة دخول الـWorker.
@@ -108,6 +136,50 @@ const workers = [
     },
     { connection, concurrency: 1 },
   ),
+
+  /**
+   * استيراد الموظفين (§9.2).
+   *
+   * تسلسلياً: دفعتان لمؤسسة واحدة قد تحملان البريد نفسه، وتنفيذهما
+   * معاً يجعل فحص «هل توجد دعوة معلّقة؟» يمر في كليهما فتُرسل دعوتان.
+   */
+  new Worker<EmployeeImportJobData>(
+    QUEUE_NAMES.EMPLOYEE_IMPORT,
+    async (job) => {
+      logger.info({ jobId: job.id, rows: job.data.rows.length }, 'تنفيذ دفعة استيراد');
+      await handleEmployeeImport(job);
+    },
+    { connection, concurrency: 1 },
+  ),
+
+  /**
+   * دورة الفوترة وفحص النطاقات (§9.3 و§9.4).
+   *
+   * طابور واحد لأربع مهام دورية: كلها تشغيلية بلا مستخدم ينتظرها،
+   * وتسلسلها يمنع تداخل تجديد مع خفض على الاشتراك نفسه.
+   */
+  new Worker(
+    QUEUE_NAMES.BILLING_CYCLE,
+    async (job) => {
+      switch (job.name) {
+        case BILLING_RENEW_JOB:
+          await handleBillingRenewals();
+          return;
+        case BILLING_EXPIRE_JOB:
+          await handleBillingExpirations();
+          return;
+        case BILLING_STALE_JOB:
+          await handleStalePayments();
+          return;
+        case DOMAIN_VERIFY_JOB:
+          await verifyPendingDomains();
+          return;
+        default:
+          logger.warn({ name: job.name }, 'مهمة دورية غير معروفة');
+      }
+    },
+    { connection, concurrency: 1 },
+  ),
 ];
 
 /**
@@ -119,7 +191,8 @@ const workers = [
  */
 const outboxQueue = new Queue(QUEUE_NAMES.OUTBOX_DISPATCH, { connection });
 const analyticsQueue = new Queue(QUEUE_NAMES.ANALYTICS_INGEST, { connection });
-const schedulers = [outboxQueue, analyticsQueue];
+const billingQueue = new Queue(QUEUE_NAMES.BILLING_CYCLE, { connection });
+const schedulers = [outboxQueue, analyticsQueue, billingQueue];
 
 // تفريغ السجل عند الاكتمال مقصود في الثلاث: مهمة دورية ناجحة لا قيمة
 // لتاريخها، وتراكمها يملأ Redis بما لا يُقرأ.
@@ -153,6 +226,25 @@ await analyticsQueue.add(
   },
 );
 
+for (const [name, interval] of [
+  [BILLING_RENEW_JOB, BILLING_INTERVAL_MS],
+  [BILLING_EXPIRE_JOB, BILLING_INTERVAL_MS],
+  [BILLING_STALE_JOB, BILLING_INTERVAL_MS],
+  [DOMAIN_VERIFY_JOB, DOMAIN_CHECK_INTERVAL_MS],
+] as const) {
+  await billingQueue.add(
+    name,
+    {},
+    {
+      repeat: { every: interval },
+      removeOnComplete: true,
+      // الفاشلة تبقى أطول: خلل في دورة الفوترة يمس مالاً، وتشخيصه
+      // يحتاج تاريخاً لا لقطةً واحدة.
+      removeOnFail: { count: 500 },
+    },
+  );
+}
+
 for (const worker of workers) {
   worker.on('failed', (job, error) => {
     logger.error(
@@ -177,6 +269,17 @@ for (const worker of workers) {
         );
         void handleAccountDeletionFailure(job as never, error).catch((failure: Error) =>
           logger.error({ error: failure.message }, 'تعذّر تسجيل فشل الحذف'),
+        );
+      }
+    }
+
+    if (worker.name === QUEUE_NAMES.EMPLOYEE_IMPORT) {
+      // دفعة استنفدت محاولاتها تبقى «قيد التنفيذ» في اللوحة إلى الأبد
+      // ما لم نوسمها فاشلة — والمسؤول ينتظر نتيجة لن تصل.
+      const exhausted = job !== undefined && job.attemptsMade >= (job.opts.attempts ?? 1);
+      if (exhausted) {
+        void handleEmployeeImportFailure(job as never, error).catch((failure: Error) =>
+          logger.error({ error: failure.message }, 'تعذّر تسجيل فشل دفعة الاستيراد'),
         );
       }
     }

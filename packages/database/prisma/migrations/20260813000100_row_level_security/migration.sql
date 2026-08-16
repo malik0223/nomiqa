@@ -81,6 +81,11 @@ CREATE POLICY outbox_tenant_isolation ON "outbox_events"
 --      CREATE ROLE nomiqa_app LOGIN PASSWORD '...' NOSUPERUSER NOBYPASSRLS;
 --      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES
 --        IN SCHEMA public TO nomiqa_app;
+--      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO nomiqa_app;
+--
+--    سطر التسلسلات ليس زائداً: `ON ALL TABLES` لا يشملها، ودور بلا
+--    USAGE عليها يفشل عند أول nextval — أي عند إصدار أول فاتورة
+--    (المرحلة 4). أُضيف بعد أن كشفته اختبارات العزل.
 --
 --    مهاجرات Prisma تُنفَّذ بمستخدم آخر أعلى صلاحية.
 --

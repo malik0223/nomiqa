@@ -155,7 +155,183 @@ const renderers: Record<EmailTemplate, Record<'ar' | 'en', Renderer>> = {
       };
     },
   },
+
+  // ---------- المرحلة 4: الموافقات ----------
+
+  [EMAIL_TEMPLATES.CHANGE_REQUEST_SUBMITTED]: {
+    ar: (v) => ({
+      subject: 'طلب تعديل بطاقة ينتظر مراجعتك',
+      html: layout(
+        'ar',
+        'طلب تعديل جديد',
+        `<h1 style="font-size:20px;margin:0 0 16px;">طلب تعديل ينتظر مراجعتك</h1>
+         <p style="line-height:1.7;color:#374151;">${escapeHtml(v.requesterName ?? 'أحد الموظفين')} طلب تعديل حقول: ${escapeHtml(v.fields ?? '')}.</p>
+         ${button(v.reviewUrl, 'مراجعة الطلب')}`,
+      ),
+      text: `${v.requesterName ?? 'أحد الموظفين'} طلب تعديل حقول: ${v.fields ?? ''}\n\n${v.reviewUrl ?? ''}`,
+    }),
+    en: (v) => ({
+      subject: 'A card change request needs your review',
+      html: layout(
+        'en',
+        'New change request',
+        `<h1 style="font-size:20px;margin:0 0 16px;">A change request needs your review</h1>
+         <p style="line-height:1.7;color:#374151;">${escapeHtml(v.requesterName ?? 'An employee')} requested changes to: ${escapeHtml(v.fields ?? '')}.</p>
+         ${button(v.reviewUrl, 'Review request')}`,
+      ),
+      text: `${v.requesterName ?? 'An employee'} requested changes to: ${v.fields ?? ''}\n\n${v.reviewUrl ?? ''}`,
+    }),
+  },
+
+  [EMAIL_TEMPLATES.CHANGE_REQUEST_REVIEWED]: {
+    ar: (v) => {
+      const approved = v.status === 'approved';
+      return {
+        subject: approved ? 'وُوفق على طلب التعديل' : 'لم يُقبل طلب التعديل',
+        html: layout(
+          'ar',
+          'نتيجة طلب التعديل',
+          `<h1 style="font-size:20px;margin:0 0 16px;">${approved ? 'وُوفق على طلبك' : 'لم يُقبل طلبك'}</h1>
+           ${v.note ? `<p style="line-height:1.7;color:#374151;">ملاحظة المراجع: ${escapeHtml(v.note)}</p>` : ''}
+           ${button(v.cardUrl, 'فتح البطاقة')}`,
+        ),
+        text: `${approved ? 'وُوفق على طلبك' : 'لم يُقبل طلبك'}${v.note ? `\n\nملاحظة: ${v.note}` : ''}`,
+      };
+    },
+    en: (v) => {
+      const approved = v.status === 'approved';
+      return {
+        subject: approved ? 'Your change request was approved' : 'Your change request was declined',
+        html: layout(
+          'en',
+          'Change request result',
+          `<h1 style="font-size:20px;margin:0 0 16px;">${approved ? 'Your request was approved' : 'Your request was declined'}</h1>
+           ${v.note ? `<p style="line-height:1.7;color:#374151;">Reviewer note: ${escapeHtml(v.note)}</p>` : ''}
+           ${button(v.cardUrl, 'Open card')}`,
+        ),
+        text: `${approved ? 'Your request was approved' : 'Your request was declined'}${v.note ? `\n\nNote: ${v.note}` : ''}`,
+      };
+    },
+  },
+
+  // ---------- المرحلة 4: الفوترة ----------
+
+  [EMAIL_TEMPLATES.INVOICE_ISSUED]: {
+    ar: (v) => ({
+      subject: `فاتورة ${v.number ?? ''} — ${v.amount ?? ''} ر.ع`,
+      html: layout(
+        'ar',
+        'فاتورة جديدة',
+        `<h1 style="font-size:20px;margin:0 0 16px;">فاتورة ${escapeHtml(v.number ?? '')}</h1>
+         <p style="line-height:1.7;color:#374151;">المستحق ${escapeHtml(v.amount ?? '')} ريال عُماني، وتاريخ الاستحقاق ${escapeHtml(v.dueAt ?? '')}.</p>
+         ${button(v.payUrl, 'سداد الفاتورة')}`,
+      ),
+      text: `فاتورة ${v.number ?? ''}: ${v.amount ?? ''} ر.ع، تستحق في ${v.dueAt ?? ''}\n\n${v.payUrl ?? ''}`,
+    }),
+    en: (v) => ({
+      subject: `Invoice ${v.number ?? ''} — OMR ${v.amount ?? ''}`,
+      html: layout(
+        'en',
+        'New invoice',
+        `<h1 style="font-size:20px;margin:0 0 16px;">Invoice ${escapeHtml(v.number ?? '')}</h1>
+         <p style="line-height:1.7;color:#374151;">Amount due: OMR ${escapeHtml(v.amount ?? '')}, due on ${escapeHtml(v.dueAt ?? '')}.</p>
+         ${button(v.payUrl, 'Pay invoice')}`,
+      ),
+      text: `Invoice ${v.number ?? ''}: OMR ${v.amount ?? ''}, due ${v.dueAt ?? ''}\n\n${v.payUrl ?? ''}`,
+    }),
+  },
+
+  [EMAIL_TEMPLATES.INVOICE_PAID]: {
+    ar: (v) => ({
+      subject: `إيصال سداد الفاتورة ${v.number ?? ''}`,
+      html: layout(
+        'ar',
+        'إيصال سداد',
+        `<h1 style="font-size:20px;margin:0 0 16px;">وصلنا سدادك</h1>
+         <p style="line-height:1.7;color:#374151;">الفاتورة ${escapeHtml(v.number ?? '')} بمبلغ ${escapeHtml(v.amount ?? '')} ريال عُماني مسدَّدة.</p>
+         ${button(v.invoiceUrl, 'عرض الفاتورة')}`,
+      ),
+      text: `الفاتورة ${v.number ?? ''} بمبلغ ${v.amount ?? ''} ر.ع مسدَّدة.\n\n${v.invoiceUrl ?? ''}`,
+    }),
+    en: (v) => ({
+      subject: `Receipt for invoice ${v.number ?? ''}`,
+      html: layout(
+        'en',
+        'Payment receipt',
+        `<h1 style="font-size:20px;margin:0 0 16px;">Payment received</h1>
+         <p style="line-height:1.7;color:#374151;">Invoice ${escapeHtml(v.number ?? '')} for OMR ${escapeHtml(v.amount ?? '')} is paid.</p>
+         ${button(v.invoiceUrl, 'View invoice')}`,
+      ),
+      text: `Invoice ${v.number ?? ''} for OMR ${v.amount ?? ''} is paid.\n\n${v.invoiceUrl ?? ''}`,
+    }),
+  },
+
+  [EMAIL_TEMPLATES.PAYMENT_FAILED]: {
+    ar: (v) => ({
+      subject: 'تعذّر تحصيل اشتراكك',
+      html: layout(
+        'ar',
+        'تعذّر التحصيل',
+        `<h1 style="font-size:20px;margin:0 0 16px;">تعذّر تحصيل اشتراكك</h1>
+         <p style="line-height:1.7;color:#374151;">خدمتك تعمل كالمعتاد حتى ${escapeHtml(v.graceEndsAt ?? '')}. سدّد قبل ذلك التاريخ لتفادي خفض الباقة.</p>
+         ${button(v.payUrl, 'سداد الآن')}`,
+      ),
+      text: `تعذّر تحصيل اشتراكك. خدمتك تعمل حتى ${v.graceEndsAt ?? ''}.\n\n${v.payUrl ?? ''}`,
+    }),
+    en: (v) => ({
+      subject: 'We could not collect your subscription payment',
+      html: layout(
+        'en',
+        'Payment failed',
+        `<h1 style="font-size:20px;margin:0 0 16px;">We could not collect your payment</h1>
+         <p style="line-height:1.7;color:#374151;">Your service continues until ${escapeHtml(v.graceEndsAt ?? '')}. Pay before then to avoid a downgrade.</p>
+         ${button(v.payUrl, 'Pay now')}`,
+      ),
+      text: `We could not collect your payment. Service continues until ${v.graceEndsAt ?? ''}.\n\n${v.payUrl ?? ''}`,
+    }),
+  },
+
+  [EMAIL_TEMPLATES.ORGANIZATION_SUSPENDED]: {
+    ar: (v) => ({
+      subject: 'تعليق حساب مؤسستك',
+      html: layout(
+        'ar',
+        'تعليق الحساب',
+        `<h1 style="font-size:20px;margin:0 0 16px;">عُلِّق حساب مؤسستك</h1>
+         <p style="line-height:1.7;color:#374151;">السبب: ${escapeHtml(v.reason ?? '')}</p>
+         <p style="line-height:1.7;color:#374151;">بياناتك محفوظة وقابلة للتصدير. للاعتراض أو الاستفسار افتح تذكرة دعم.</p>
+         ${button(v.supportUrl, 'فتح تذكرة دعم')}`,
+      ),
+      text: `عُلِّق حساب مؤسستك. السبب: ${v.reason ?? ''}\n\n${v.supportUrl ?? ''}`,
+    }),
+    en: (v) => ({
+      subject: 'Your organization account is suspended',
+      html: layout(
+        'en',
+        'Account suspended',
+        `<h1 style="font-size:20px;margin:0 0 16px;">Your organization account is suspended</h1>
+         <p style="line-height:1.7;color:#374151;">Reason: ${escapeHtml(v.reason ?? '')}</p>
+         <p style="line-height:1.7;color:#374151;">Your data is retained and exportable. Open a support ticket to appeal.</p>
+         ${button(v.supportUrl, 'Open a support ticket')}`,
+      ),
+      text: `Your organization account is suspended. Reason: ${v.reason ?? ''}\n\n${v.supportUrl ?? ''}`,
+    }),
+  },
 };
+
+/**
+ * زر إجراء.
+ *
+ * يُحذف كلياً حين لا يوجد رابط بدل الإبقاء على `#`: زر لا يذهب إلى
+ * مكان أسوأ من غياب الزر، وهو ما كان يفعله `?? '#'` في القوالب الأقدم.
+ */
+function button(url: string | undefined, label: string): string {
+  if (!url) {
+    return '';
+  }
+
+  return `<p><a href="${encodeURI(url)}" style="display:inline-block;background:#0f766e;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;">${escapeHtml(label)}</a></p>`;
+}
 
 export function renderEmail(
   template: EmailTemplate,

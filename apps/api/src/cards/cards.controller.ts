@@ -87,6 +87,14 @@ export class CardsController {
     return this.cards.create(tenant.organizationId, user.id, body, request.requestId);
   }
 
+  /**
+   * تعديل بطاقة.
+   *
+   * من يملك `cards:approve` يتجاوز سياسة الحقول المقفلة: هو من يوافق
+   * على طلبات غيره أصلاً، وإجباره على تقديم طلب لنفسه خطوة شكلية.
+   * صلاحية الموافقة على المؤسسة كلها وحدها هي التي تتجاوز — التفويض
+   * المحدود يُفحص على البطاقة المستهدفة في مسار الموافقة نفسه.
+   */
   @Patch(':id')
   @RequirePermissions(PERMISSIONS.CARDS_WRITE)
   @ApiOperation({ summary: 'تعديل بطاقة' })
@@ -96,7 +104,9 @@ export class CardsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(updateCardSchema)) body: UpdateCardInput,
   ) {
-    return this.cards.update(tenant.organizationId, user.id, id, body);
+    return this.cards.update(tenant.organizationId, user.id, id, body, {
+      bypassPolicy: tenant.permissions.includes(PERMISSIONS.CARDS_APPROVE),
+    });
   }
 
   @Post(':id/publish')

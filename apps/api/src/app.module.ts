@@ -6,6 +6,9 @@ import { AdminModule } from './admin/admin.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { Auth0JwtGuard } from './auth/auth0-jwt.guard.js';
+import { BillingModule } from './billing/billing.module.js';
+import { ApprovalsModule } from './branding/approvals.module.js';
+import { BrandingModule } from './branding/branding.module.js';
 import { CardsModule } from './cards/cards.module.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
 import { RateLimitGuard } from './common/rate-limit.guard.js';
@@ -19,7 +22,10 @@ import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { PrivacyModule } from './privacy/privacy.module.js';
 import { RedisModule } from './redis/redis.module.js';
+import { SupportModule } from './support/support.module.js';
+import { TeamsModule } from './teams/teams.module.js';
 import { PermissionsGuard } from './tenancy/permissions.guard.js';
+import { SuspensionGuard } from './tenancy/suspension.guard.js';
 import { TenantContextGuard } from './tenancy/tenant-context.guard.js';
 import { UsersModule } from './users/users.module.js';
 
@@ -35,10 +41,15 @@ import { UsersModule } from './users/users.module.js';
     OrganizationsModule,
     UsersModule,
     FilesModule,
+    BillingModule,
+    BrandingModule,
     CardsModule,
+    ApprovalsModule,
+    TeamsModule,
     ContactsModule,
     AnalyticsModule,
     PrivacyModule,
+    SupportModule,
     AdminModule,
   ],
   controllers: [HealthController],
@@ -57,6 +68,9 @@ import { UsersModule } from './users/users.module.js';
     { provide: APP_GUARD, useClass: Auth0JwtGuard },
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    // التعليق آخر الترتيب: من لا يملك الصلاحية أصلاً يُرفض قبله، فلا
+    // تكشف رسالة «الحساب معلَّق» حالة مؤسسة لغريب عنها.
+    { provide: APP_GUARD, useClass: SuspensionGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],
 })

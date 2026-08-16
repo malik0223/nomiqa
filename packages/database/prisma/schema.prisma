@@ -51,25 +51,52 @@ model User {
 
 /// المؤسسة (Tenant). جذر عزل البيانات في المنصة.
 model Organization {
-  id           String    @id @default(uuid()) @db.Uuid
+  id            String  @id @default(uuid()) @db.Uuid
   /// معرّف نصي فريد يُستخدم في المسارات الإدارية.
-  slug         String    @unique
-  name         String
-  nameEn       String?   @map("name_en")
-  logoUrl      String?   @map("logo_url")
+  slug          String  @unique
+  name          String
+  nameEn        String? @map("name_en")
+  logoUrl       String? @map("logo_url")
   /// نوع المؤسسة: personal لحساب فردي، business لمؤسسة حقيقية.
-  kind         String    @default("personal")
-  defaultLocale String   @default("ar") @map("default_locale")
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  kind          String  @default("personal")
+  defaultLocale String  @default("ar") @map("default_locale")
 
-  memberships OrganizationMembership[]
-  auditLogs   AuditLog[]
-  files       FileObject[]
-  cards       Card[]
-  contacts    Contact[]
-  tags        Tag[]
+  /// بيانات الفوترة. تُطبع على الفاتورة ويحملها التزام ضريبي، فتُخزَّن
+  /// كما أدخلها العميل لا كما استُنتجت من ملفه الشخصي.
+  billingName      String? @map("billing_name")
+  billingEmail     String? @map("billing_email")
+  billingVatNumber String? @map("billing_vat_number")
+  billingAddress   String? @map("billing_address")
+  billingCountry   String  @default("OM") @map("billing_country")
+
+  /// تعليق الحساب (§9.5 من خارطة الطريق). عمودان لا عمود واحد:
+  /// منع لوحة التحكم عقوبة تشغيلية، وحجب الصفحة العامة إزالة محتوى
+  /// منشور مطبوع على ورق — قراران مختلفان لا يُتخذان معاً بالضرورة.
+  suspendedAt           DateTime? @map("suspended_at") @db.Timestamptz(6)
+  suspensionReason      String?   @map("suspension_reason")
+  suspendedByUserId     String?   @map("suspended_by_user_id") @db.Uuid
+  publicAccessBlockedAt DateTime? @map("public_access_blocked_at") @db.Timestamptz(6)
+
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships    OrganizationMembership[]
+  auditLogs      AuditLog[]
+  files          FileObject[]
+  cards          Card[]
+  contacts       Contact[]
+  tags           Tag[]
+  departments    Department[]
+  branches       Branch[]
+  invitations    Invitation[]
+  brandKit       BrandKit?
+  brandPolicies  BrandPolicy[]
+  customDomains  CustomDomain[]
+  subscription   Subscription?
+  invoices       Invoice[]
+  payments       Payment[]
+  supportTickets SupportTicket[]
 
   @@map("organizations")
 }
@@ -84,15 +111,41 @@ model OrganizationMembership {
   joinedAt       DateTime? @map("joined_at") @db.Timestamptz(6)
   /// تعطيل العضوية يجب أن يمنع الوصول فوراً (§12.2 من وثيقة المعمارية).
   revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// موقع الموظف في الهيكل. عمودان منفصلان لأنهما محوران مستقلان:
+  /// موظف في «المبيعات» **و**في «فرع صحار» معاً.
+  departmentId String? @map("department_id") @db.Uuid
+  branchId     String? @map("branch_id") @db.Uuid
+
+  /// بيانات الموظف كما تعرفها المؤسسة — لا كما كتبها هو في بطاقته.
+  /// المصدران يختلفان عمداً: البطاقة ملك صاحبها، والدليل ملك المؤسسة.
+  jobTitle   String? @map("job_title")
+  jobTitleEn String? @map("job_title_en")
+  employeeNo String? @map("employee_no")
+
+  /// الظهور في دليل الموظفين. الإخفاء قرار الموظف أو مسؤوله،
+  /// ولا يعني إلغاء العضوية.
+  directoryVisible Boolean @default(true) @map("directory_visible")
+
+  /// مغادرة الموظف. منفصل عن revokedAt: المغادرة حدث موارد بشرية له
+  /// تاريخ معلن، والإلغاء إجراء تقني قد يسبقه أو يتأخر عنه.
+  offboardedAt DateTime? @map("offboarded_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   roles        MembershipRole[]
+  scopes       MembershipScope[]
+  department   Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  branch       Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, userId])
+  @@unique([organizationId, employeeNo])
   @@index([organizationId, status])
+  @@index([organizationId, departmentId])
+  @@index([organizationId, branchId])
   @@index([userId])
   @@map("organization_memberships")
 }
@@ -110,6 +163,8 @@ model Role {
 
   permissions     RolePermission[]
   membershipRoles MembershipRole[]
+  scopes          MembershipScope[]
+  invitations     Invitation[]
 
   @@unique([organizationId, key])
   @@map("roles")
@@ -184,13 +239,13 @@ model AuditLog {
 /// تعريف قالب. القوالب مشتركة بين كل المؤسسات (بلا organizationId)
 /// حتى المرحلة 4 حيث تُضاف قوالب مؤسسية خاصة.
 model Template {
-  key         String   @id
-  name        String
-  nameEn      String?  @map("name_en")
+  key           String   @id
+  name          String
+  nameEn        String?  @map("name_en")
   /// أحدث إصدار منشور. البطاقات تثبّت إصداراً بعينه عند النشر.
-  latestVersion Int    @default(1) @map("latest_version")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  latestVersion Int      @default(1) @map("latest_version")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   versions TemplateVersion[]
 
@@ -221,9 +276,9 @@ model TemplateVersion {
 /// تُنشر بالعربية والإنجليزية، ووضع الحقول هنا كان سيفرض عموداً لكل
 /// حقل لكل لغة.
 model Card {
-  id             String    @id @default(uuid()) @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  ownerUserId    String    @map("owner_user_id") @db.Uuid
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  ownerUserId    String @map("owner_user_id") @db.Uuid
 
   /// الرابط العام. **ثابت لا يتغير بتحديث البطاقة** — وإلا بطل كل
   /// QR مطبوع وكل رابط شاركه صاحبه (§7.4).
@@ -231,13 +286,13 @@ model Card {
   /// draft | published | unpublished
   status String @default("draft")
 
-  templateKey String @map("template_key")
+  templateKey     String @map("template_key")
   /// إصدار القالب المثبَّت. يُثبَّت عند النشر فلا يتغير عرض البطاقة
   /// المنشورة حين يُحدَّث القالب.
-  templateVersion Int @map("template_version")
+  templateVersion Int    @map("template_version")
 
   /// الألوان والخطوط ونصف القطر — يختلف حسب القالب فلا يصلح أعمدة.
-  theme Json?
+  theme        Json?
   /// ترتيب الأقسام وإظهارها. مصفوفة مفاتيح أقسام.
   sectionOrder Json? @map("section_order")
 
@@ -262,11 +317,12 @@ model Card {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  localizations CardLocalization[]
-  links         CardLink[]
-  publications  CardPublication[]
-  contacts      Contact[]
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  localizations  CardLocalization[]
+  links          CardLink[]
+  publications   CardPublication[]
+  contacts       Contact[]
+  changeRequests CardChangeRequest[]
 
   /// الـslug فريد عالمياً: يظهر في الرابط العام nomiqa.om/<slug>.
   @@unique([slug])
@@ -302,14 +358,14 @@ model CardLink {
   cardId String @map("card_id") @db.Uuid
 
   /// phone | email | whatsapp | website | booking | social | custom
-  type String
+  type     String
   /// للشبكات الاجتماعية: linkedin | x | instagram …
   platform String?
   /// نص الزر. قد يختلف حسب اللغة، فيُحفظ لكل لغة عند الحاجة.
-  label   String?
-  labelEn String? @map("label_en")
+  label    String?
+  labelEn  String? @map("label_en")
   /// القيمة الخام: رقم بصيغة E.164، بريد، أو رابط.
-  value   String
+  value    String
 
   position  Int     @default(0)
   isVisible Boolean @default(true) @map("is_visible")
@@ -328,15 +384,15 @@ model CardLink {
 /// الصفحة العامة تُقدَّم من اللقطة لا من الجداول الحيّة، فلا يظهر
 /// تعديل نصف مكتمل لزائر بينما صاحبها يحرر مسودته.
 model CardPublication {
-  id            String   @id @default(uuid()) @db.Uuid
-  cardId        String   @map("card_id") @db.Uuid
-  revision      Int
-  templateKey   String   @map("template_key")
-  templateVersion Int    @map("template_version")
+  id              String   @id @default(uuid()) @db.Uuid
+  cardId          String   @map("card_id") @db.Uuid
+  revision        Int
+  templateKey     String   @map("template_key")
+  templateVersion Int      @map("template_version")
   /// اللقطة المعروضة: المحتوى بكل اللغات والروابط والثيم.
-  snapshot      Json
-  publishedBy   String?  @map("published_by") @db.Uuid
-  publishedAt   DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
+  snapshot        Json
+  publishedBy     String?  @map("published_by") @db.Uuid
+  publishedAt     DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
 
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
@@ -420,16 +476,16 @@ model ContactConsent {
   contactId      String @map("contact_id") @db.Uuid
 
   /// contact_storage | marketing
-  purpose         String
-  granted         Boolean
+  purpose            String
+  granted            Boolean
   /// إصدار النص الذي وافق عليه الزائر — تغيّر النص يستوجب موافقة جديدة.
-  consentTextVersion String @map("consent_text_version")
+  consentTextVersion String   @map("consent_text_version")
   /// public_form | manual | import
-  source          String   @default("public_form")
+  source             String   @default("public_form")
   /// للإثبات القانوني فقط ويخضع لسياسة الاحتفاظ.
-  ipAddress       String?  @map("ip_address")
-  userAgent       String?  @map("user_agent")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  ipAddress          String?  @map("ip_address")
+  userAgent          String?  @map("user_agent")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
@@ -622,14 +678,14 @@ model PlatformAuditLog {
 
 /// راية ميزة على مستوى المنصة (§6.4).
 model FeatureFlag {
-  key         String   @id
-  description String
+  key               String   @id
+  description       String
   /// القيمة الافتراضية لكل المؤسسات.
-  enabled     Boolean  @default(false)
+  enabled           Boolean  @default(false)
   /// نسبة الإطلاق التدريجي 0–100، تُطبَّق حين enabled = false.
-  rolloutPercentage Int @default(0) @map("rollout_percentage")
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  rolloutPercentage Int      @default(0) @map("rollout_percentage")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   overrides FeatureFlagOverride[]
 
@@ -662,19 +718,19 @@ model FeatureFlagOverride {
 /// السجلات لا تُحدَّث بل تُضاف: سحب الموافقة صف جديد بـgranted=false،
 /// فيبقى تاريخ الموافقات كاملاً وقابلاً للإثبات.
 model UserConsent {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
   /// terms | privacy | marketing
-  purpose   String
-  granted   Boolean
+  purpose         String
+  granted         Boolean
   /// إصدار النص الذي وافق عليه — تغيّر النص يستوجب موافقة جديدة.
-  documentVersion String @map("document_version")
+  documentVersion String   @map("document_version")
   /// web | api | import
-  source    String   @default("web")
+  source          String   @default("web")
   /// يُحفظ للإثبات القانوني فقط، ويخضع لسياسة الاحتفاظ.
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -688,20 +744,20 @@ model UserConsent {
 /// المستخدم** كإثبات تنفيذ الطلب. لذلك لا يحمل بيانات شخصية —
 /// معرّف وتجزئة بريد فقط.
 model DataSubjectRequest {
-  id            String    @id @default(uuid()) @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
   /// معرّف المستخدم وقت الطلب. يبقى بعد حذفه ولا يشير إلى صف قائم.
-  subjectUserId String    @map("subject_user_id") @db.Uuid
+  subjectUserId    String    @map("subject_user_id") @db.Uuid
   /// تجزئة البريد — تكفي للربط عند الاستفسار دون تخزين العنوان.
-  subjectEmailHash String @map("subject_email_hash")
+  subjectEmailHash String    @map("subject_email_hash")
   /// export | deletion | rectification
-  type          String
+  type             String
   /// pending | processing | completed | failed
-  status        String    @default("pending")
-  requestedAt   DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
-  completedAt   DateTime? @map("completed_at") @db.Timestamptz(6)
-  failureReason String?   @map("failure_reason")
+  status           String    @default("pending")
+  requestedAt      DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  failureReason    String?   @map("failure_reason")
   /// ملخص ما نُفِّذ: أعداد الصفوف والملفات المحذوفة، بلا محتوى.
-  outcome       Json?
+  outcome          Json?
 
   @@index([subjectUserId, requestedAt(sort: Desc)])
   @@index([status, requestedAt])
@@ -746,23 +802,23 @@ model FileObject {
 /// سجل محاولات الإرسال. لا يخزّن محتوى الرسالة — البيانات الشخصية
 /// تبقى خارج السجلات (§9.4)، ويُحفظ المرجع والحالة فقط.
 model NotificationDelivery {
-  id             String    @id @default(uuid()) @db.Uuid
-  organizationId String?   @map("organization_id") @db.Uuid
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String?   @map("organization_id") @db.Uuid
   /// email | in_app | push | sms
-  channel        String
+  channel           String
   /// مفتاح القالب، مثل welcome أو contact_captured
-  template       String
-  locale         String    @default("ar")
+  template          String
+  locale            String    @default("ar")
   /// تجزئة المستلم لا عنوانه — تكفي للربط دون تخزين بريد شخصي.
-  recipientHash  String    @map("recipient_hash")
+  recipientHash     String    @map("recipient_hash")
   /// pending | sent | failed
-  status         String    @default("pending")
-  attempts       Int       @default(0)
-  lastError      String?   @map("last_error")
+  status            String    @default("pending")
+  attempts          Int       @default(0)
+  lastError         String?   @map("last_error")
   /// معرّف الرسالة لدى المزوّد، لتتبّع الوصول لاحقاً.
-  providerMessageId String? @map("provider_message_id")
-  sentAt         DateTime? @map("sent_at") @db.Timestamptz(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  providerMessageId String?   @map("provider_message_id")
+  sentAt            DateTime? @map("sent_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([status, createdAt])
@@ -788,4 +844,671 @@ model OutboxEvent {
 
   @@index([status, availableAt])
   @@map("outbox_events")
+}
+
+// ============================================================
+// المرحلة الرابعة — الشركات والاشتراكات (خارطة الطريق §9)
+// ============================================================
+
+// ------------------------------------------------------------
+// الهيكل التنظيمي (§9.2)
+// ------------------------------------------------------------
+
+/// إدارة أو قسم. شجرة: القسم قد يتبع إدارة أعلى.
+model Department {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  /// الأب في الشجرة. null = إدارة عليا.
+  parentId       String? @map("parent_id") @db.Uuid
+  name           String
+  nameEn         String? @map("name_en")
+  /// رمز الإدارة في أنظمة المؤسسة — مفتاح المطابقة عند الاستيراد
+  /// الجماعي، فملف الموارد البشرية يحمل رموزاً لا معرّفات UUID.
+  code           String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       Department?              @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Department[]             @relation("DepartmentTree")
+  memberships  OrganizationMembership[]
+  policies     BrandPolicy[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, parentId])
+  @@map("departments")
+}
+
+/// فرع جغرافي.
+model Branch {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  name           String
+  nameEn         String? @map("name_en")
+  code           String?
+  city           String?
+  country        String? @default("OM")
+  addressLine    String? @map("address_line")
+  phone          String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  OrganizationMembership[]
+  policies     BrandPolicy[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("branches")
+}
+
+/// تفويض إداري بنطاق أضيق من المؤسسة — «مسؤول فرع أو إدارة».
+///
+/// جدول منفصل عن membership_roles عمداً: صفوف ذاك الجدول تمنح صلاحية
+/// **على المؤسسة كلها**، وهو ما يقرؤه حارس الصلاحيات. خلط النطاقين في
+/// جدول واحد كان يعني أن كل مسار قائم يقرأ الصلاحيات يبدأ فجأة بمنح
+/// وصول شامل لمن فُوّض على إدارة واحدة. الفصل يُبقي Deny by default
+/// صحيحاً بلا إعادة مراجعة كل مسار سابق.
+model MembershipScope {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  membershipId   String @map("membership_id") @db.Uuid
+  roleId         String @map("role_id") @db.Uuid
+  /// department | branch
+  scopeType      String @map("scope_type")
+  scopeId        String @map("scope_id") @db.Uuid
+
+  grantedByUserId String?  @map("granted_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  membership OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role       Role                   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, roleId, scopeType, scopeId])
+  @@index([organizationId, scopeType, scopeId])
+  @@map("membership_scopes")
+}
+
+/// دعوة موظف.
+///
+/// الرمز يُخزَّن مجزّأً لا صريحاً: جدول الدعوات يُقرأ في كل عرض لقائمة
+/// الفريق، وتسريب نسخة منه ما كان ليصبح تسريب مفاتيح انضمام صالحة.
+model Invitation {
+  id              String @id @default(uuid()) @db.Uuid
+  organizationId  String @map("organization_id") @db.Uuid
+  email           String
+  /// البريد بعد التطبيع — مفتاح منع التكرار والمطابقة عند القبول.
+  emailNormalized String @map("email_normalized")
+  tokenHash       String @map("token_hash")
+
+  roleId       String  @map("role_id") @db.Uuid
+  departmentId String? @map("department_id") @db.Uuid
+  branchId     String? @map("branch_id") @db.Uuid
+  jobTitle     String? @map("job_title")
+  employeeNo   String? @map("employee_no")
+  locale       String  @default("ar")
+
+  /// pending | accepted | revoked | expired
+  status          String    @default("pending")
+  invitedByUserId String?   @map("invited_by_user_id") @db.Uuid
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamptz(6)
+  acceptedUserId  String?   @map("accepted_user_id") @db.Uuid
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  /// دفعة الاستيراد التي أنشأت الدعوة — للتتبّع والإلغاء الجماعي.
+  importId        String?   @map("import_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         Role            @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  import       EmployeeImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
+
+  /// الرمز فريد عالمياً: القبول يجري قبل معرفة المؤسسة.
+  @@unique([tokenHash])
+  @@index([organizationId, status, createdAt(sort: Desc)])
+  @@index([emailNormalized, status])
+  @@map("invitations")
+}
+
+/// دفعة استيراد موظفين من CSV.
+///
+/// صف يمثّل الدفعة كلها لا سطراً منها: الاستيراد عملية طويلة تُنفَّذ في
+/// الـWorker، والمسؤول يحتاج تقريراً واحداً يقرؤه لا مئة إشعار.
+model EmployeeImport {
+  id              String @id @default(uuid()) @db.Uuid
+  organizationId  String @map("organization_id") @db.Uuid
+  createdByUserId String @map("created_by_user_id") @db.Uuid
+  fileName        String @map("file_name")
+
+  /// pending | processing | completed | failed
+  status      String  @default("pending")
+  /// هل تُنشأ بطاقة مسودة لكل موظف مستورد؟
+  createCards Boolean @default(false) @map("create_cards")
+  /// هل تُرسل الدعوات فوراً أم تبقى معلّقة للمراجعة؟
+  sendInvites Boolean @default(true) @map("send_invites")
+
+  totalRows    Int @default(0) @map("total_rows")
+  invitedCount Int @default(0) @map("invited_count")
+  updatedCount Int @default(0) @map("updated_count")
+  skippedCount Int @default(0) @map("skipped_count")
+  errorCount   Int @default(0) @map("error_count")
+
+  /// أخطاء الصفوف: رقم السطر والسبب. **لا يحمل قيم الحقول** — ملف
+  /// الموارد البشرية بيانات شخصية، ونسخها في عمود يُقرأ في اللوحة
+  /// يضاعف أماكن وجودها بلا داع.
+  rowErrors Json? @map("row_errors")
+
+  startedAt     DateTime? @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz(6)
+  failureReason String?   @map("failure_reason")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  invitations Invitation[]
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("employee_imports")
+}
+
+// ------------------------------------------------------------
+// الهوية المؤسسية (§9.3)
+// ------------------------------------------------------------
+
+/// هوية المؤسسة البصرية. صف واحد لكل مؤسسة.
+model BrandKit {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @unique @map("organization_id") @db.Uuid
+
+  primaryColor    String? @map("primary_color")
+  secondaryColor  String? @map("secondary_color")
+  backgroundColor String? @map("background_color")
+  textColor       String? @map("text_color")
+  fontFamily      String? @map("font_family")
+
+  logoFileId  String? @map("logo_file_id") @db.Uuid
+  coverFileId String? @map("cover_file_id") @db.Uuid
+
+  /// إخفاء شعار المنصة على الصفحة العامة — ميزة باقة لا تفضيل.
+  /// القيمة هنا **نيّة** المؤسسة؛ التطبيق يشترط استحقاق الباقة أيضاً،
+  /// فخفض الباقة يعيد الشعار بلا تعديل هذا الصف.
+  hidePlatformBadge Boolean @default(false) @map("hide_platform_badge")
+
+  updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("brand_kits")
+}
+
+/// سياسة البطاقات: القالب المفروض، الحقول المقفلة، واشتراط الموافقة.
+///
+/// عدة صفوف لكل مؤسسة: صف عام (بلا إدارة ولا فرع) وصفوف أخص. الحل
+/// يختار **الأخص المطابق** — إدارة، ثم فرع، ثم المؤسسة.
+model BrandPolicy {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  departmentId   String? @map("department_id") @db.Uuid
+  branchId       String? @map("branch_id") @db.Uuid
+
+  name String
+
+  /// القالب المفروض على بطاقات هذا النطاق. null = حر.
+  templateKey String? @map("template_key")
+
+  /// مفاتيح الحقول التي لا يعدّلها الموظف، مثل organizationName أو theme.
+  lockedFields String[] @map("locked_fields")
+
+  /// هل يمر تعديل البطاقة بسير موافقة قبل تطبيقه؟
+  requireApproval Boolean @default(false) @map("require_approval")
+
+  /// قيم تُفرض على كل بطاقة في النطاق (اسم المؤسسة، الألوان، الشعار).
+  enforcedValues Json? @map("enforced_values")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  branch       Branch?      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, isActive])
+  @@map("brand_policies")
+}
+
+/// طلب تعديل بطاقة ينتظر موافقة.
+///
+/// الطلب يحمل **التعديل المقترح** لا البطاقة المعدَّلة: البطاقة نفسها
+/// لا تُلمس حتى الموافقة، فلا توجد مسودة نصفها معتمد ونصفها لا.
+model CardChangeRequest {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  cardId         String @map("card_id") @db.Uuid
+
+  requestedByUserId String @map("requested_by_user_id") @db.Uuid
+  /// pending | approved | rejected | withdrawn | stale
+  status            String @default("pending")
+
+  /// التعديل المقترح بصيغة مدخلات تحديث البطاقة.
+  payload      Json
+  /// إصدار البطاقة وقت تقديم الطلب. عدم تطابقه عند الموافقة يعني أن
+  /// البطاقة تغيّرت بعد الطلب، فيُوسم الطلب stale ولا يُطبَّق أعمى.
+  baseRevision Int  @map("base_revision")
+
+  reviewedByUserId String?   @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt       DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote       String?   @map("review_note")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, createdAt(sort: Desc)])
+  @@index([cardId, status])
+  @@map("card_change_requests")
+}
+
+/// نطاق مخصص للمؤسسة.
+///
+/// الملكية تُثبَت بسجل TXT قبل التفعيل: بدونه يستطيع أي عميل أن يسجّل
+/// نطاق غيره عندنا فيمنع صاحبه من استخدامه.
+model CustomDomain {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  /// اسم المضيف بحروف صغيرة. فريد عالمياً — لا يخدم مضيفٌ مؤسستين.
+  hostname       String @unique
+
+  /// pending | verifying | active | failed | disabled
+  status            String @default("pending")
+  /// القيمة المطلوب وضعها في سجل TXT على _nomiqa-challenge.<hostname>
+  verificationToken String @map("verification_token")
+
+  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(6)
+  lastCheckedAt DateTime? @map("last_checked_at") @db.Timestamptz(6)
+  failureReason String?   @map("failure_reason")
+  attempts      Int       @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([status, lastCheckedAt])
+  @@map("custom_domains")
+}
+
+// ------------------------------------------------------------
+// الاشتراكات والفوترة (§9.4)
+// ------------------------------------------------------------
+
+/// باقة. صفوف لا ثوابت في الشيفرة: تعديل السعر أو الحد قرار تجاري
+/// يتخذه مسؤول المنصة، ولا يجوز أن ينتظر إصداراً جديداً.
+model Plan {
+  id            String  @id @default(uuid()) @db.Uuid
+  key           String  @unique
+  name          String
+  nameEn        String? @map("name_en")
+  description   String?
+  descriptionEn String? @map("description_en")
+
+  /// الحدود العددية: maxCards, maxMembers, maxDepartments, maxBranches,
+  /// maxContacts. القيمة ‎-1 تعني بلا حد.
+  limits Json
+
+  /// مفاتيح الميزات المتاحة — custom_domain، approval_workflow، إلخ.
+  features String[]
+
+  /// أيام التجربة المجانية عند أول اشتراك.
+  trialDays Int @default(0) @map("trial_days")
+
+  /// هل تظهر في صفحة الأسعار؟ باقة المؤسسات تُباع بالتفاوض وحده.
+  isPublic  Boolean @default(true) @map("is_public")
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  prices        PlanPrice[]
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+/// سعر باقة لدورة فوترة وعملة.
+///
+/// المبلغ **بالبيسة** عدداً صحيحاً لا عشرياً: حساب ضريبة وخصم على أعداد
+/// عشرية عائمة يُنتج فروق كسور تظهر في مستند يقرؤه محاسب.
+model PlanPrice {
+  id          String  @id @default(uuid()) @db.Uuid
+  planId      String  @map("plan_id") @db.Uuid
+  /// month | year
+  interval    String
+  currency    String  @default("OMR")
+  amountBaisa Int     @map("amount_baisa")
+  isActive    Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  plan          Plan           @relation(fields: [planId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@unique([planId, interval, currency])
+  @@map("plan_prices")
+}
+
+/// اشتراك المؤسسة. صف واحد لكل مؤسسة على الأكثر.
+///
+/// الترقية والخفض يعدّلان هذا الصف ولا ينشئان صفاً ثانياً: تاريخ
+/// التغييرات يُحفظ في subscription_events، ووجود اشتراكين نشطين
+/// لمؤسسة واحدة حالة لا معنى تجارياً لها ولا نريد شيفرة تتعامل معها.
+model Subscription {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @unique @map("organization_id") @db.Uuid
+  planId         String  @map("plan_id") @db.Uuid
+  priceId        String? @map("price_id") @db.Uuid
+
+  /// trialing | active | past_due | canceled | expired | pending
+  status   String @default("pending")
+  /// عدد المقاعد المدفوعة — التسعير حسب المستخدمين النشطين (§9.4).
+  quantity Int    @default(1)
+
+  currentPeriodStart DateTime  @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd   DateTime  @map("current_period_end") @db.Timestamptz(6)
+  trialEndsAt        DateTime? @map("trial_ends_at") @db.Timestamptz(6)
+
+  /// الإلغاء لا يقطع الخدمة فوراً — الفترة المدفوعة حقّ مكتسب.
+  cancelAtPeriodEnd Boolean   @default(false) @map("cancel_at_period_end")
+  canceledAt        DateTime? @map("canceled_at") @db.Timestamptz(6)
+  /// نهاية مهلة السماح بعد فشل التحصيل، قبل الخفض إلى المجانية.
+  gracePeriodEndsAt DateTime? @map("grace_period_ends_at") @db.Timestamptz(6)
+
+  couponId String? @map("coupon_id") @db.Uuid
+
+  /// رمز العميل لدى المزوّد — للتحصيل المتكرر ببطاقة محفوظة.
+  providerCustomerId String? @map("provider_customer_id")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan                @relation(fields: [planId], references: [id], onDelete: Restrict)
+  price        PlanPrice?          @relation(fields: [priceId], references: [id], onDelete: SetNull)
+  coupon       Coupon?             @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  events       SubscriptionEvent[]
+  invoices     Invoice[]
+
+  @@index([status, currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+/// حدث في دورة حياة الاشتراك — للتدقيق ولتقارير الإيراد.
+model SubscriptionEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  subscriptionId String   @map("subscription_id") @db.Uuid
+  /// created | trial_started | activated | renewed | upgraded | downgraded
+  /// | canceled | reactivated | payment_failed | expired
+  type           String
+  fromPlanId     String?  @map("from_plan_id") @db.Uuid
+  toPlanId       String?  @map("to_plan_id") @db.Uuid
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+  @@map("subscription_events")
+}
+
+/// فاتورة.
+///
+/// كل المبالغ بالبيسة. الفاتورة **لا تُعدَّل بعد الإصدار** — التصحيح
+/// إبطال وإصدار جديد، لأن المستند التزام ضريبي بيد العميل.
+model Invoice {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  subscriptionId String? @map("subscription_id") @db.Uuid
+
+  /// رقم الفاتورة المعروض. فريد عالمياً ومتسلسل — يُطلب في التدقيق.
+  number String @unique
+
+  /// draft | open | paid | void | uncollectible
+  status String @default("draft")
+
+  currency        String @default("OMR")
+  subtotalBaisa   Int    @map("subtotal_baisa")
+  discountBaisa   Int    @default(0) @map("discount_baisa")
+  /// نسبة الضريبة وقت الإصدار بالنقاط الأساسية (5% = 500). تُخزَّن على
+  /// الفاتورة ولا تُقرأ من الإعداد: تغيير النسبة لاحقاً لا يجوز أن
+  /// يعيد حساب فاتورة صادرة.
+  vatRateBps      Int    @default(500) @map("vat_rate_bps")
+  vatBaisa        Int    @default(0) @map("vat_baisa")
+  totalBaisa      Int    @map("total_baisa")
+  amountPaidBaisa Int    @default(0) @map("amount_paid_baisa")
+
+  periodStart DateTime? @map("period_start") @db.Timestamptz(6)
+  periodEnd   DateTime? @map("period_end") @db.Timestamptz(6)
+  issuedAt    DateTime? @map("issued_at") @db.Timestamptz(6)
+  dueAt       DateTime? @map("due_at") @db.Timestamptz(6)
+  paidAt      DateTime? @map("paid_at") @db.Timestamptz(6)
+  voidedAt    DateTime? @map("voided_at") @db.Timestamptz(6)
+
+  /// لقطة بيانات المشتري وقت الإصدار — تغيير عنوان المؤسسة لاحقاً
+  /// لا يجوز أن يغيّر فاتورة سابقة.
+  billingName      String? @map("billing_name")
+  billingEmail     String? @map("billing_email")
+  billingVatNumber String? @map("billing_vat_number")
+  billingAddress   String? @map("billing_address")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  lines        InvoiceLine[]
+  payments     Payment[]
+
+  @@index([organizationId, issuedAt(sort: Desc)])
+  @@index([status, dueAt])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  invoiceId      String @map("invoice_id") @db.Uuid
+
+  description     String
+  descriptionEn   String? @map("description_en")
+  quantity        Int     @default(1)
+  unitAmountBaisa Int     @map("unit_amount_baisa")
+  amountBaisa     Int     @map("amount_baisa")
+  metadata        Json?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_lines")
+}
+
+/// محاولة دفع لدى مزوّد.
+///
+/// clientReferenceId فريد ويُولَّد عندنا: هو ما يربط جلسة المزوّد
+/// بفاتورتنا، ويمنع احتساب دفعة مرتين إن تكرر النداء الراجع.
+model Payment {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  invoiceId      String? @map("invoice_id") @db.Uuid
+
+  /// thawani | manual
+  provider String @default("thawani")
+  /// pending | paid | failed | canceled | refunded
+  status   String @default("pending")
+
+  clientReferenceId String  @unique @map("client_reference_id")
+  providerSessionId String? @map("provider_session_id")
+  providerPaymentId String? @map("provider_payment_id")
+
+  amountBaisa Int    @map("amount_baisa")
+  currency    String @default("OMR")
+
+  /// رابط صفحة الدفع. ينتهي بانتهاء الجلسة فلا يُعرض بعد اكتمالها.
+  checkoutUrl   String?   @map("checkout_url")
+  /// الحالة كما وردت من المزوّد نصاً — للتشخيص دون تفسير مسبق.
+  rawStatus     String?   @map("raw_status")
+  failureReason String?   @map("failure_reason")
+  paidAt        DateTime? @map("paid_at") @db.Timestamptz(6)
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice      Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+  @@index([providerSessionId])
+  @@map("payments")
+}
+
+/// نداء راجع من المزوّد.
+///
+/// بلا organizationId ولا RLS: يصل قبل معرفة المؤسسة، ووظيفته الوحيدة
+/// منع تكرار المعالجة. **لا يُوثَق بمحتواه** — استلامه إشارة فقط،
+/// والحقيقة تُقرأ باستعلام الجلسة من المزوّد.
+model PaymentEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  provider   String
+  /// معرّف الحدث لدى المزوّد أو معرّف الجلسة — مفتاح منع التكرار.
+  externalId String   @map("external_id")
+  eventType  String   @map("event_type")
+  paymentId  String?  @map("payment_id") @db.Uuid
+  /// نتيجة المعالجة: received | applied | ignored | error
+  outcome    String   @default("received")
+  payload    Json?
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  @@unique([provider, externalId, eventType])
+  @@index([receivedAt(sort: Desc)])
+  @@map("payment_events")
+}
+
+/// كود خصم.
+model Coupon {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique
+  name String
+
+  /// percent | fixed
+  discountType  String  @map("discount_type")
+  /// نسبة بالنقاط الأساسية إن كان percent، أو مبلغ بالبيسة إن كان fixed.
+  discountValue Int     @map("discount_value")
+  currency      String? @default("OMR")
+
+  /// عدد دورات الفوترة التي يسري عليها الخصم. null = دائم.
+  durationCycles Int? @map("duration_cycles")
+
+  maxRedemptions    Int?     @map("max_redemptions")
+  redeemedCount     Int      @default(0) @map("redeemed_count")
+  /// مفاتيح الباقات التي يسري عليها. فارغة = كلها.
+  appliesToPlanKeys String[] @map("applies_to_plan_keys")
+
+  validFrom  DateTime  @default(now()) @map("valid_from") @db.Timestamptz(6)
+  validUntil DateTime? @map("valid_until") @db.Timestamptz(6)
+  isActive   Boolean   @default(true) @map("is_active")
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  redemptions   CouponRedemption[]
+  subscriptions Subscription[]
+
+  @@map("coupons")
+}
+
+/// استخدام كود خصم. الفريد يمنع استخدام المؤسسة للكود مرتين.
+model CouponRedemption {
+  id             String   @id @default(uuid()) @db.Uuid
+  couponId       String   @map("coupon_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  invoiceId      String?  @map("invoice_id") @db.Uuid
+  cyclesUsed     Int      @default(0) @map("cycles_used")
+  redeemedAt     DateTime @default(now()) @map("redeemed_at") @db.Timestamptz(6)
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, organizationId])
+  @@index([organizationId])
+  @@map("coupon_redemptions")
+}
+
+// ------------------------------------------------------------
+// الدعم والبلاغات (§9.5)
+// ------------------------------------------------------------
+
+/// تذكرة دعم.
+///
+/// استثناء معلن من القاعدة «لوحة الإدارة لا تقرأ بيانات أي مؤسسة»:
+/// المؤسسة تكتب هنا **قاصدةً** أن يقرأ فريق المنصة. لذلك لا يُنسخ في
+/// التذكرة محتوى بطاقة ولا جهة اتصال — نص كتبه صاحب التذكرة فقط.
+model SupportTicket {
+  id              String @id @default(uuid()) @db.Uuid
+  organizationId  String @map("organization_id") @db.Uuid
+  createdByUserId String @map("created_by_user_id") @db.Uuid
+
+  subject  String
+  /// billing | technical | abuse | feature_request | other
+  category String @default("other")
+  /// low | normal | high | urgent
+  priority String @default("normal")
+  /// open | pending_customer | pending_platform | resolved | closed
+  status   String @default("open")
+
+  assignedAdminUserId String?   @map("assigned_admin_user_id") @db.Uuid
+  firstResponseAt     DateTime? @map("first_response_at") @db.Timestamptz(6)
+  resolvedAt          DateTime? @map("resolved_at") @db.Timestamptz(6)
+  closedAt            DateTime? @map("closed_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     SupportMessage[]
+
+  @@index([organizationId, status, createdAt(sort: Desc)])
+  @@index([status, priority, createdAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  ticketId       String  @map("ticket_id") @db.Uuid
+  authorUserId   String? @map("author_user_id") @db.Uuid
+  /// customer | platform
+  authorType     String  @map("author_type")
+  body           String
+  /// ملاحظة داخلية لا يراها العميل.
+  isInternal     Boolean @default(false) @map("is_internal")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
 }

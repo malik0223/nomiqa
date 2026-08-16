@@ -42,6 +42,13 @@ export async function setup(): Promise<void> {
     await admin.$executeRawUnsafe(
       `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${TEST_ROLE}`,
     );
+
+    // التسلسلات ليست جداول: `ON ALL TABLES` لا يشملها، ودور بلا USAGE
+    // عليها يفشل عند أول `nextval` — أي عند إصدار أول فاتورة. اكتُشف
+    // هذا في اختبارات العزل لا في الإنتاج، وهو بالضبط سبب وجودها.
+    await admin.$executeRawUnsafe(
+      `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${TEST_ROLE}`,
+    );
   } finally {
     await admin.$disconnect();
   }

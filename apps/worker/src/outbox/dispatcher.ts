@@ -63,11 +63,333 @@ async function handleEvent(event: ClaimedEvent): Promise<void> {
       await handleContactCaptured(event);
       return;
 
+    case OUTBOX_EVENT_TYPES.MEMBER_INVITED:
+      await handleMemberInvited(event);
+      return;
+
+    case OUTBOX_EVENT_TYPES.CHANGE_REQUEST_SUBMITTED:
+      await handleChangeRequestSubmitted(event);
+      return;
+
+    case OUTBOX_EVENT_TYPES.CHANGE_REQUEST_REVIEWED:
+      await handleChangeRequestReviewed(event);
+      return;
+
+    case OUTBOX_EVENT_TYPES.INVOICE_ISSUED:
+      await handleInvoiceIssued(event);
+      return;
+
+    case OUTBOX_EVENT_TYPES.INVOICE_PAID:
+      await handleInvoicePaid(event);
+      return;
+
+    case OUTBOX_EVENT_TYPES.ORGANIZATION_SUSPENDED:
+      await handleOrganizationSuspended(event);
+      return;
+
     default:
       // الأنواع التي لا مستهلك لها بعد تُوسم منجزة لا معلّقة: تركها
       // pending يجعل كل دورة تعيد التقاطها إلى الأبد.
       logger.debug({ type: event.event_type }, 'حدث بلا مستهلك — يُتخطى');
   }
+}
+
+/**
+ * دعوة موظف (§9.2).
+ *
+ * الرمز يعيش في حمولة الحدث لا في الجدول: الجدول يحفظ تجزئته وحدها،
+ * والمرسل يحتاج الرمز الصريح ليبني الرابط. الحدث يُوسم `processed`
+ * بعد الإرسال وتمسحه دورة تنظيف الـoutbox، فلا يبقى الرمز مقروءاً.
+ */
+async function handleMemberInvited(event: ClaimedEvent): Promise<void> {
+  const organizationId = event.organization_id;
+  const token = asId(event.payload.token);
+  const email = asId(event.payload.email);
+
+  if (!organizationId || !token || !email) {
+    throw new Error('حمولة member.invited ناقصة');
+  }
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { name: true },
+  });
+
+  await enqueueEmail({
+    to: email,
+    template: EMAIL_TEMPLATES.ORGANIZATION_INVITE,
+    locale: event.payload.locale === 'en' ? 'en' : 'ar',
+    variables: {
+      organizationName: organization?.name ?? '',
+      inviteUrl: `${appBaseUrl()}/invitations/${token}`,
+    },
+    organizationId,
+    idempotencyKey: idempotencyKeyFrom('invite', asId(event.payload.invitationId) ?? token),
+  });
+}
+
+/**
+ * طلب تعديل جديد (§9.3).
+ *
+ * يُرسل إلى أصحاب `cards:approve` **على المؤسسة** فقط. المفوَّضون على
+ * إدارة بعينها يحتاجون تصفيةً بموقع مالك البطاقة، وإرسال الطلب إلى
+ * كل مفوَّض كان سيُعلم مسؤول إدارة بتعديلات إدارة أخرى.
+ */
+async function handleChangeRequestSubmitted(event: ClaimedEvent): Promise<void> {
+  const organizationId = event.organization_id;
+  const requestId = asId(event.payload.requestId);
+
+  if (!organizationId || !requestId) {
+    throw new Error('حمولة change_request.submitted ناقصة');
+  }
+
+  const request = await withRlsContext(prisma, { organizationId }, (tx) =>
+    tx.cardChangeRequest.findFirst({
+      where: { id: requestId },
+      select: { payload: true, requestedByUserId: true },
+    }),
+  );
+
+  if (!request) {
+    logger.warn({ requestId }, 'الطلب غير موجود — يُتخطى الحدث');
+    return;
+  }
+
+  const [requester, reviewers] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: request.requestedByUserId },
+      select: { fullName: true },
+    }),
+    withRlsContext(prisma, { organizationId }, (tx) =>
+      tx.organizationMembership.findMany({
+        where: {
+          status: 'active',
+          revokedAt: null,
+          roles: {
+            some: {
+              role: { permissions: { some: { permission: { key: 'cards:approve' } } } },
+            },
+          },
+        },
+        include: { user: { select: { email: true, locale: true, deletedAt: true } } },
+      }),
+    ),
+  ]);
+
+  const fields = Object.keys((request.payload as Record<string, unknown>) ?? {})
+    .filter((key) => key !== 'revision')
+    .join('، ');
+
+  for (const reviewer of reviewers) {
+    if (reviewer.user.deletedAt) {
+      continue;
+    }
+
+    await enqueueEmail({
+      to: reviewer.user.email,
+      template: EMAIL_TEMPLATES.CHANGE_REQUEST_SUBMITTED,
+      locale: reviewer.user.locale === 'en' ? 'en' : 'ar',
+      variables: {
+        requesterName: requester?.fullName ?? '',
+        fields,
+        reviewUrl: `${appBaseUrl()}/approvals/${requestId}`,
+      },
+      organizationId,
+      idempotencyKey: idempotencyKeyFrom('cr-submitted', `${requestId}:${reviewer.userId}`),
+    });
+  }
+}
+
+/** نتيجة المراجعة تصل إلى مقدّم الطلب وحده. */
+async function handleChangeRequestReviewed(event: ClaimedEvent): Promise<void> {
+  const organizationId = event.organization_id;
+  const requestId = asId(event.payload.requestId);
+  const status = asId(event.payload.status);
+
+  if (!organizationId || !requestId || !status) {
+    throw new Error('حمولة change_request.reviewed ناقصة');
+  }
+
+  const request = await withRlsContext(prisma, { organizationId }, (tx) =>
+    tx.cardChangeRequest.findFirst({
+      where: { id: requestId },
+      select: { requestedByUserId: true, reviewNote: true, card: { select: { id: true } } },
+    }),
+  );
+
+  if (!request) {
+    return;
+  }
+
+  const requester = await prisma.user.findUnique({
+    where: { id: request.requestedByUserId },
+    select: { email: true, locale: true, deletedAt: true },
+  });
+
+  if (!requester || requester.deletedAt) {
+    return;
+  }
+
+  await enqueueEmail({
+    to: requester.email,
+    template: EMAIL_TEMPLATES.CHANGE_REQUEST_REVIEWED,
+    locale: requester.locale === 'en' ? 'en' : 'ar',
+    variables: {
+      status,
+      note: request.reviewNote ?? '',
+      cardUrl: `${appBaseUrl()}/cards/${request.card.id}`,
+    },
+    organizationId,
+    idempotencyKey: idempotencyKeyFrom('cr-reviewed', `${requestId}:${status}`),
+  });
+}
+
+/** فاتورة صدرت (§9.4). تذهب إلى بريد الفوترة أو المالك. */
+async function handleInvoiceIssued(event: ClaimedEvent): Promise<void> {
+  const organizationId = event.organization_id;
+  const invoiceId = asId(event.payload.invoiceId);
+
+  if (!organizationId || !invoiceId) {
+    throw new Error('حمولة invoice.issued ناقصة');
+  }
+
+  const invoice = await withRlsContext(prisma, { organizationId }, (tx) =>
+    tx.invoice.findFirst({ where: { id: invoiceId } }),
+  );
+
+  // فاتورة بصفر تُصدَر مسدَّدة (تجربة أو خصم كامل) — لا مطالبة تُرسل.
+  if (!invoice || invoice.totalBaisa === 0) {
+    return;
+  }
+
+  const recipient = await billingRecipient(organizationId);
+  if (!recipient) {
+    return;
+  }
+
+  await enqueueEmail({
+    to: recipient.email,
+    template: EMAIL_TEMPLATES.INVOICE_ISSUED,
+    locale: recipient.locale,
+    variables: {
+      number: invoice.number,
+      amount: formatOmr(invoice.totalBaisa),
+      dueAt: invoice.dueAt?.toISOString().slice(0, 10) ?? '',
+      payUrl: `${appBaseUrl()}/billing/invoices/${invoiceId}`,
+    },
+    organizationId,
+    idempotencyKey: idempotencyKeyFrom('invoice-issued', invoiceId),
+  });
+}
+
+async function handleInvoicePaid(event: ClaimedEvent): Promise<void> {
+  const organizationId = event.organization_id;
+  const invoiceId = asId(event.payload.invoiceId);
+
+  if (!organizationId || !invoiceId) {
+    throw new Error('حمولة invoice.paid ناقصة');
+  }
+
+  const invoice = await withRlsContext(prisma, { organizationId }, (tx) =>
+    tx.invoice.findFirst({ where: { id: invoiceId } }),
+  );
+
+  if (!invoice) {
+    return;
+  }
+
+  const recipient = await billingRecipient(organizationId);
+  if (!recipient) {
+    return;
+  }
+
+  await enqueueEmail({
+    to: recipient.email,
+    template: EMAIL_TEMPLATES.INVOICE_PAID,
+    locale: recipient.locale,
+    variables: {
+      number: invoice.number,
+      amount: formatOmr(invoice.totalBaisa),
+      invoiceUrl: `${appBaseUrl()}/billing/invoices/${invoiceId}`,
+    },
+    organizationId,
+    idempotencyKey: idempotencyKeyFrom('invoice-paid', invoiceId),
+  });
+}
+
+/** تعليق الحساب (§9.5) — يصل إلى المالك حصراً. */
+async function handleOrganizationSuspended(event: ClaimedEvent): Promise<void> {
+  const organizationId = event.organization_id;
+
+  if (!organizationId) {
+    throw new Error('حمولة organization.suspended ناقصة');
+  }
+
+  const recipient = await billingRecipient(organizationId);
+  if (!recipient) {
+    return;
+  }
+
+  await enqueueEmail({
+    to: recipient.email,
+    template: EMAIL_TEMPLATES.ORGANIZATION_SUSPENDED,
+    locale: recipient.locale,
+    variables: {
+      reason: typeof event.payload.reason === 'string' ? event.payload.reason : '',
+      supportUrl: `${appBaseUrl()}/support`,
+    },
+    organizationId,
+    idempotencyKey: idempotencyKeyFrom('org-suspended', `${organizationId}:${event.id}`),
+  });
+}
+
+/**
+ * مستلم رسائل الفوترة والحساب.
+ *
+ * بريد الفوترة المُعلَن أولاً، ثم مالك المؤسسة. إرسال إشعار مالي أو
+ * إشعار تعليق إلى كل الأعضاء تسريبٌ لمعلومة داخل المؤسسة نفسها.
+ */
+async function billingRecipient(
+  organizationId: string,
+): Promise<{ email: string; locale: 'ar' | 'en' } | null> {
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { billingEmail: true, defaultLocale: true },
+  });
+
+  if (organization?.billingEmail) {
+    return {
+      email: organization.billingEmail,
+      locale: organization.defaultLocale === 'en' ? 'en' : 'ar',
+    };
+  }
+
+  const owner = await withRlsContext(prisma, { organizationId }, (tx) =>
+    tx.organizationMembership.findFirst({
+      where: {
+        status: 'active',
+        revokedAt: null,
+        roles: { some: { role: { key: 'owner' } } },
+      },
+      include: { user: { select: { email: true, locale: true, deletedAt: true } } },
+    }),
+  );
+
+  if (!owner || owner.user.deletedAt) {
+    logger.warn({ organizationId }, 'لا مستلم لرسائل الحساب');
+    return null;
+  }
+
+  return { email: owner.user.email, locale: owner.user.locale === 'en' ? 'en' : 'ar' };
+}
+
+function formatOmr(baisa: number): string {
+  return `${Math.floor(baisa / 1000)}.${String(baisa % 1000).padStart(3, '0')}`;
+}
+
+function appBaseUrl(): string {
+  const url = process.env.APP_BASE_URL ?? 'http://localhost:3000';
+  return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
 /**

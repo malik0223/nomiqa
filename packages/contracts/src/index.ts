@@ -4,10 +4,14 @@
  */
 
 export * from './analytics.js';
+export * from './billing.js';
+export * from './branding.js';
 export * from './card.js';
 export * from './contact.js';
 export * from './email.js';
 export * from './privacy.js';
+export * from './support.js';
+export * from './team.js';
 
 export type Locale = 'ar' | 'en';
 
@@ -56,6 +60,15 @@ export interface AuthenticatedUser {
 }
 
 /**
+ * صلاحية ممنوحة على إدارة أو فرع لا على المؤسسة كلها (§9.2).
+ */
+export interface ScopedPermission {
+  permission: string;
+  scopeType: 'department' | 'branch';
+  scopeId: string;
+}
+
+/**
  * سياق المؤسسة النشطة للطلب.
  * الصلاحيات تُقرأ من قاعدة بياناتنا وليس من الـToken.
  */
@@ -63,7 +76,17 @@ export interface TenantContext {
   organizationId: string;
   membershipId: string;
   roles: string[];
+  /**
+   * صلاحيات على **المؤسسة كلها**.
+   *
+   * التفويض المحدود لا يدخل هنا إطلاقاً: كل مسار قائم يقرأ هذا الحقل
+   * بافتراض أنه شامل، وحقن صلاحية بنطاق فيه كان يوسّع كل واحد منها.
+   */
   permissions: string[];
+  /** التفويضات المحدودة. تُفحص في الخدمة على الصف المستهدف لا في الحارس. */
+  scopedPermissions: ScopedPermission[];
+  /** المؤسسة معلَّقة إدارياً — القراءة مسموحة والكتابة مرفوضة. */
+  suspended: boolean;
 }
 
 export interface RequestContext {
@@ -112,6 +135,18 @@ export const OUTBOX_EVENT_TYPES = {
   MEMBERSHIP_REVOKED: 'membership.revoked',
   CARD_PUBLISHED: 'card.published',
   CONTACT_CAPTURED: 'contact.captured',
+  // المرحلة 4
+  MEMBER_INVITED: 'member.invited',
+  INVITATION_ACCEPTED: 'invitation.accepted',
+  MEMBER_OFFBOARDED: 'member.offboarded',
+  CHANGE_REQUEST_SUBMITTED: 'change_request.submitted',
+  CHANGE_REQUEST_REVIEWED: 'change_request.reviewed',
+  SUBSCRIPTION_ACTIVATED: 'subscription.activated',
+  SUBSCRIPTION_CANCELED: 'subscription.canceled',
+  INVOICE_ISSUED: 'invoice.issued',
+  INVOICE_PAID: 'invoice.paid',
+  PAYMENT_FAILED: 'payment.failed',
+  ORGANIZATION_SUSPENDED: 'organization.suspended',
 } as const;
 
 export type OutboxEventType = (typeof OUTBOX_EVENT_TYPES)[keyof typeof OUTBOX_EVENT_TYPES];
@@ -124,6 +159,9 @@ export const QUEUE_NAMES = {
   ANALYTICS_INGEST: 'analytics-ingest',
   OUTBOX_DISPATCH: 'outbox-dispatch',
   ACCOUNT_DELETION: 'account-deletion',
+  /** استيراد الموظفين ودورة الفوترة وفحص النطاقات (§9.2 و§9.4). */
+  EMPLOYEE_IMPORT: 'employee-import',
+  BILLING_CYCLE: 'billing-cycle',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

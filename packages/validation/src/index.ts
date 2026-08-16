@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { emailSchema, localeSchema, slugSchema } from './primitives.js';
+import { localeSchema, slugSchema } from './primitives.js';
 
 /**
  * مخططات التحقق المشتركة بين Web وAPI.
@@ -10,8 +10,12 @@ import { emailSchema, localeSchema, slugSchema } from './primitives.js';
 
 export * from './primitives.js';
 export * from './analytics.js';
+export * from './billing.js';
+export * from './branding.js';
 export * from './card.js';
 export * from './contact.js';
+export * from './support.js';
+export * from './team.js';
 
 /** حدود رفع الملفات — تُطبَّق في الواجهة وفي الـAPI معاً. */
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'] as const;
@@ -84,10 +88,8 @@ export const createOrganizationSchema = z.object({
   defaultLocale: localeSchema.default('ar'),
 });
 
-export const inviteMemberSchema = z.object({
-  email: emailSchema,
-  roleKey: z.enum(['admin', 'member']),
-});
+// `inviteMemberSchema` انتقل إلى `team.ts` في المرحلة 4: الدعوة صارت
+// تحمل إدارةً وفرعاً ومسمى وظيفياً، ولم تعد بريداً ودوراً فحسب.
 
 // ---------- الموافقات (§9.4) ----------
 
@@ -156,6 +158,5 @@ export const consentSchema = z.object({
 });
 
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
-export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;
 export type ConsentInput = z.infer<typeof consentSchema>;

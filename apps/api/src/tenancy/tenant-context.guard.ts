@@ -63,23 +63,37 @@ export class TenantContextGuard implements CanActivate {
     // سياق المستخدم مطلوب هنا: سياسة RLS تحجب صفوف العضويات بدونه،
     // فيرفض الحارس كل طلب فور تشغيل التطبيق بدور NOBYPASSRLS.
     // ضبط السياق لا يمنح شيئاً — الصف يجب أن يكون موجوداً فعلاً.
-    const membership = await withRlsContext(
+    const { membership, organization } = await withRlsContext(
       this.prisma,
       { userId: user.id, organizationId },
-      (tx) =>
-        tx.organizationMembership.findUnique({
+      async (tx) => ({
+        membership: await tx.organizationMembership.findUnique({
           where: { organizationId_userId: { organizationId, userId: user.id } },
           include: {
             roles: {
               include: { role: { include: { permissions: { include: { permission: true } } } } },
             },
+            // التفويضات المحدودة تُقرأ مع العضوية لا في استعلام ثانٍ:
+            // كلاهما يُحتاج في كل طلب، وفصلهما دورة ذهاب وإياب إضافية.
+            scopes: {
+              include: { role: { include: { permissions: { include: { permission: true } } } } },
+            },
           },
         }),
+        organization: await tx.organization.findUnique({
+          where: { id: organizationId },
+          select: { deletedAt: true, suspendedAt: true },
+        }),
+      }),
     );
 
     // نفس الرسالة للعضوية غير الموجودة وللمعطّلة، حتى لا تكشف
     // الاستجابة وجود مؤسسة بمعرّف معيّن.
     if (!membership || membership.status !== 'active' || membership.revokedAt !== null) {
+      throw new ForbiddenException('لا تملك وصولاً إلى هذه المؤسسة');
+    }
+
+    if (!organization || organization.deletedAt !== null) {
       throw new ForbiddenException('لا تملك وصولاً إلى هذه المؤسسة');
     }
 
@@ -92,11 +106,24 @@ export class TenantContextGuard implements CanActivate {
       ),
     ];
 
+    // صلاحيات التفويض المحدود تبقى في حقلها الخاص ولا تُدمج في
+    // `permissions`: ذاك الحقل يعني «على المؤسسة كلها»، ودمجها فيه كان
+    // سيوسّع كل مسار قائم يقرؤه دون أن يمر أحد على أيٍّ منها.
+    const scopedPermissions = membership.scopes.flatMap((scope) =>
+      scope.role.permissions.map((rolePermission) => ({
+        permission: rolePermission.permission.key,
+        scopeType: scope.scopeType as 'department' | 'branch',
+        scopeId: scope.scopeId,
+      })),
+    );
+
     const tenant: TenantContext = {
       organizationId,
       membershipId: membership.id,
       roles,
       permissions,
+      scopedPermissions,
+      suspended: organization.suspendedAt !== null,
     };
 
     request.tenant = tenant;
