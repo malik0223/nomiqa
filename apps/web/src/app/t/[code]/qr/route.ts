@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import { shareCodeSchema } from '@nomiqa/validation';
-import { appBaseUrl } from '../../../../lib/cards';
-import { resolveShareCode } from '../../../../lib/presence';
+import { appBaseUrl } from '@/lib/cards';
+import { resolveShareCode } from '@/lib/presence';
 
 /**
  * رمز الحملة أو الوسم.

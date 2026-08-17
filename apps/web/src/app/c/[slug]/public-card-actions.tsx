@@ -77,25 +77,29 @@ export function PublicCardActions({
     }
   }
 
+  const quiet =
+    'flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100';
+
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-3 px-5 pb-12">
+    <div className="mt-4 flex w-full flex-col gap-3">
+      {/*
+        «حفظ جهة الاتصال» هو الفعل الذي تُقاس به البطاقة، فهو الوحيد
+        بمظهر زرّ ممتلئ عريض. البقية أفعال ثانوية بلا حدود.
+      */}
       <a
         href={`/c/${slug}/vcard?lang=${locale}`}
         // download يجعل الهاتف يفتح بطاقة الاتصال بدل عرض النص.
         download={`${slug}.vcf`}
         // يلتقطه المستمع المفوَّض في AnalyticsBeacon.
         data-track="vcard"
-        className="block rounded-xl border border-neutral-300 px-5 py-3 text-center text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+        className="flex items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-5 py-3.5 text-center text-sm font-semibold shadow-sheet transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800"
       >
+        <DownloadGlyph />
         {text.save}
       </a>
 
-      <div className="flex flex-wrap justify-center gap-2 text-sm">
-        <button
-          type="button"
-          onClick={() => void share()}
-          className="rounded-lg px-3 py-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
-        >
+      <div className="flex flex-wrap items-center justify-center gap-1 text-[0.8125rem]">
+        <button type="button" onClick={() => void share()} className={quiet}>
           {text.share}
         </button>
 
@@ -103,29 +107,41 @@ export function PublicCardActions({
           href={`https://wa.me/?text=${encodeURIComponent(`${shareText} — ${publicUrl}`)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-lg px-3 py-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+          className={quiet}
         >
           {text.whatsapp}
         </a>
 
-        <button
-          type="button"
-          onClick={() => void copy()}
-          className="rounded-lg px-3 py-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
-        >
+        <button type="button" onClick={() => void copy()} className={quiet}>
           {copied ? text.copied : text.copy}
         </button>
 
         {otherLocale ? (
           // رابط لا زر: يعمل بلا JavaScript ويُفهرَس كنسخة ثانية للصفحة.
-          <a
-            href={`?lang=${otherLocale}`}
-            className="rounded-lg px-3 py-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
-          >
+          <a href={`?lang=${otherLocale}`} className={quiet}>
             {text.switch}
           </a>
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** أيقونة مرسومة هنا لا مستوردة: الصفحة العامة تُقاس بحجمها. */
+function DownloadGlyph() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M4 20h16" />
+    </svg>
   );
 }

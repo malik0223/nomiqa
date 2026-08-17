@@ -8,6 +8,7 @@ import type {
   TemplateSummary,
 } from '@nomiqa/contracts';
 import { apiFetch } from './api-client';
+import { demoPublicCard, isDemoMode } from './demo/fixtures';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -58,6 +59,11 @@ export function publicCardTag(slug: string): string {
  * تخزينها. النتيجة تُخزَّن بوسم يُبطله النشر وحده.
  */
 export async function fetchPublicCard(slug: string): Promise<PublicCardPage | null> {
+  // وضع العرض: راجع التعليق في lib/demo/fixtures.
+  if (isDemoMode()) {
+    return slug === demoPublicCard.snapshot.slug ? (demoPublicCard as PublicCardPage) : null;
+  }
+
   const response = await fetch(`${API_URL}/api/v1/public/cards/${encodeURIComponent(slug)}`, {
     next: { revalidate: 300, tags: [publicCardTag(slug)] },
   });

@@ -1,7 +1,7 @@
 import { shareCodeSchema } from '@nomiqa/validation';
 import { NextResponse } from 'next/server';
-import { appBaseUrl, publicCardUrl } from '../../../lib/cards';
-import { resolveShareCode } from '../../../lib/presence';
+import { appBaseUrl, publicCardUrl } from '@/lib/cards';
+import { resolveShareCode } from '@/lib/presence';
 
 /**
  * هدف المشاركة: `nomiqa.om/t/<code>`.

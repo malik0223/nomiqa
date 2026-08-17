@@ -1,4 +1,4 @@
-import { fetchPublicCard } from '../../../lib/cards';
+import { fetchPublicCard } from '@/lib/cards';
 import '../../globals.css';
 
 /**
@@ -35,7 +35,12 @@ export default async function PublicCardLayout({
 
   return (
     <html lang={locale} dir={dir} className={themeClass} suppressHydrationWarning>
-      <body className="min-h-screen bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50">
+      {/*
+        خلفية رمادية خفيفة لا بيضاء: البطاقة نفسها بيضاء، وجعل الصفحة
+        بيضاء مثلها يذيب حوافّها فتفقد كونها **بطاقة**. هذا هو الفرق
+        الوحيد بين صفحة ويب وصورة شيء يُسلَّم باليد.
+      */}
+      <body className="min-h-screen bg-neutral-100 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50">
         {children}
       </body>
     </html>

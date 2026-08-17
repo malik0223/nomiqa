@@ -1,8 +1,8 @@
 import type { InvitationPreview } from '@nomiqa/contracts';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
-import { ApiError, apiFetch } from '../../../../lib/api-client';
-import { auth0 } from '../../../../lib/auth0';
+import { ApiError, apiFetch } from '@/lib/api-client';
+import { auth0 } from '@/lib/auth0';
 import { AcceptButton } from './accept-button';
 
 interface PageProps {
@@ -41,9 +41,9 @@ export default async function InvitationPage({ params }: PageProps) {
           : t('errors.generic');
 
     return (
-      <main className="mx-auto max-w-lg px-6 py-20 text-center">
-        <h1 className="text-xl font-bold">{t('invitations.title')}</h1>
-        <p className="mt-4 text-neutral-600 dark:text-neutral-400">{message}</p>
+      <main className="mx-auto w-full max-w-lg px-5 py-16 text-center sm:px-8">
+        <h1 className="font-display text-xl font-bold tracking-tight">{t('invitations.title')}</h1>
+        <p className="mt-4 text-muted">{message}</p>
       </main>
     );
   }
@@ -51,21 +51,21 @@ export default async function InvitationPage({ params }: PageProps) {
   const expired = new Date(preview.expiresAt) <= new Date();
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-20 text-center">
-      <h1 className="text-2xl font-bold">{t('invitations.heading')}</h1>
+    <main className="mx-auto w-full max-w-lg px-5 py-16 text-center sm:px-8">
+      <h1 className="font-display text-2xl font-bold tracking-tight">{t('invitations.heading')}</h1>
       <p className="mt-3 text-lg">{preview.organizationName}</p>
 
-      <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-2 text-sm text-muted">
         {t('invitations.asRole', { role: t(`team.roles.${preview.roleKey}`) })}
         {preview.jobTitle ? ` · ${preview.jobTitle}` : ''}
       </p>
 
       {expired ? (
-        <p className="mt-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+        <p className="mt-6 rounded-lg border border-warning-100 bg-warning-50 px-4 py-3 text-sm text-warning-600 dark:border-amber-800">
           {t('invitations.expired')}
         </p>
       ) : !preview.emailMatches ? (
-        <p className="mt-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+        <p className="mt-6 rounded-lg border border-danger-100 bg-danger-50 px-4 py-3 text-sm text-danger-900 dark:border-red-800">
           {t('invitations.emailMismatch')}
         </p>
       ) : (

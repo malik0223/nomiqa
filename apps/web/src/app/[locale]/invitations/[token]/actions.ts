@@ -1,7 +1,7 @@
 'use server';
 
 import { invitationTokenSchema } from '@nomiqa/validation';
-import { ApiError, apiFetch } from '../../../../lib/api-client';
+import { ApiError, apiFetch } from '@/lib/api-client';
 
 /**
  * قبول الدعوة.

@@ -42,13 +42,13 @@ export function AcceptButton({
         type="button"
         onClick={accept}
         disabled={pending}
-        className="rounded-lg bg-brand-600 px-6 py-3 text-sm font-medium text-white disabled:opacity-50"
+        className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white disabled:opacity-50"
       >
         {pending ? labels.processing : labels.accept}
       </button>
 
       {error ? (
-        <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="mt-4 text-sm text-danger-500">
           {error}
         </p>
       ) : null}

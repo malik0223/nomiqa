@@ -17,12 +17,71 @@
     "actions": "Actions",
     "copy": "Copy",
     "copied": "Copied",
-    "retry": "Retry"
+    "retry": "Retry",
+    "back": "Back",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "none": "—",
+    "optional": "Optional",
+    "remove": "Remove",
+    "view": "View",
+    "open": "Open",
+    "more": "More",
+    "darkMode": "Dark",
+    "lightMode": "Light",
+    "systemMode": "System"
   },
   "marketing": {
     "title": "Your digital business card",
     "subtitle": "Create your card, share it with a tap, and follow up with everyone you meet.",
-    "cta": "Start free"
+    "cta": "Start free",
+    "eyebrow": "Digital business card",
+    "headline": "Your professional card, with nothing to run out of.",
+    "lede": "Build one card, share it by QR, NFC tag or link, and see exactly who opened it and who got in touch.",
+    "ctaSecondary": "See the guide",
+    "proof": "Works in Arabic and English, and updates for everyone holding your link the moment you edit it.",
+    "features": {
+      "card": {
+        "title": "A card that updates after you share it",
+        "body": "Change your number or title once and everyone holding your link sees it. The link itself never changes."
+      },
+      "capture": {
+        "title": "Contact capture",
+        "body": "The “share your details” form turns a visitor into a consented contact record, ready to export or sync to your CRM."
+      },
+      "presence": {
+        "title": "Presence at every touchpoint",
+        "body": "QR code, email signature, meeting background, NFC tag and wallet pass all point at the same card and are measured apart."
+      },
+      "analytics": {
+        "title": "Analytics that separate touchpoints",
+        "body": "See how many visits came from the tag versus the signature, and which link people actually tap."
+      },
+      "team": {
+        "title": "One identity across the team",
+        "body": "Lock the logo, colour and title format at company level; leave each employee only what is theirs."
+      },
+      "events": {
+        "title": "Events and expos",
+        "body": "Scan paper cards with the camera, add qualifying questions, and get an event report when it closes."
+      }
+    },
+    "steps": {
+      "title": "Three steps to your first contact",
+      "one": {
+        "title": "Build the card",
+        "body": "Name, title, links. Pick a template and colour, and preview as you type."
+      },
+      "two": {
+        "title": "Publish and share",
+        "body": "Publishing fixes the link and generates the QR code, vCard and wallet pass."
+      },
+      "three": {
+        "title": "Follow who reached out",
+        "body": "Every visit, tap and contact lands on your dashboard, split by touchpoint."
+      }
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -63,7 +122,10 @@
       "signature": "Email signature",
       "wallet": "Digital wallet",
       "meeting": "Meeting background"
-    }
+    },
+    "description": "Numbers for the selected period, then who reached out and which link they used.",
+    "peak": "Peak {value} views on {date}",
+    "bySourceHint": "Only visits with a known source — a directly shared link carries none."
   },
   "contacts": {
     "title": "Contacts",
@@ -137,7 +199,8 @@
       "add": "Add reminder",
       "complete": "Done",
       "done": "Completed"
-    }
+    },
+    "emptyHint": "Every contact from your card form or a scanned paper card lands here."
   },
   "settings": {
     "title": "Settings",
@@ -172,7 +235,8 @@
       "confirmWord": "DELETE",
       "confirmLabel": "Type \"{word}\" to confirm",
       "action": "Delete my account permanently"
-    }
+    },
+    "description": "Your personal details, your consents, and what you can do with your data."
   },
   "cards": {
     "title": "My cards",
@@ -232,7 +296,8 @@
         "booking": "Booking",
         "social": "Social network",
         "custom": "Custom link"
-      }
+      },
+      "hint": "Primary links render as wide buttons; the rest as a list below them."
     },
     "media": {
       "title": "Images",
@@ -295,7 +360,8 @@
       "copied": "Copied",
       "downloadQr": "Download QR",
       "open": "Open",
-      "qrAlt": "Card QR code"
+      "qrAlt": "Card QR code",
+      "hint": "The link and code never change: editing the card does not require reprinting the QR."
     },
     "editor": {
       "title": "Card editor",
@@ -315,8 +381,12 @@
       "delete": "Delete card",
       "deleteTitle": "Delete card",
       "deleteHint": "Permanently stops the public link. The link is never reused for another card.",
-      "deleteConfirm": "Confirm delete"
-    }
+      "deleteConfirm": "Confirm delete",
+      "blockersTitle": "Publishing is blocked until these are done"
+    },
+    "description": "All your cards and their status. A published card updates for visitors the moment you republish.",
+    "emptyHint": "Start with one card: name, title, number. Everything else is editable later.",
+    "updatedAt": "Edited {time}"
   },
   "errors": {
     "generic": "An unexpected error occurred",
@@ -392,7 +462,8 @@
       "processing": "Processing",
       "completed": "Completed",
       "failed": "Failed"
-    }
+    },
+    "description": "Members, invitations, departments, branches and bulk import — on one screen."
   },
   "directory": {
     "title": "Employee directory",
@@ -400,7 +471,8 @@
     "allDepartments": "All departments",
     "allBranches": "All branches",
     "viewCard": "View card",
-    "empty": "No results."
+    "empty": "No results.",
+    "description": "Every published card in the company, in one searchable place."
   },
   "invitations": {
     "title": "Invitation",
@@ -471,7 +543,8 @@
     "returnFailed": "The payment did not complete.",
     "returnCanceled": "Payment cancelled.",
     "returnCanceledHint": "Nothing was charged. You can try again any time.",
-    "returnMissingRef": "The return link is incomplete."
+    "returnMissingRef": "The return link is incomplete.",
+    "intro": "Your current plan and its limits, your invoices and their payment history."
   },
   "branding": {
     "title": "Corporate identity",
@@ -521,7 +594,8 @@
       "active": "Active",
       "failed": "Verification failed",
       "disabled": "Disabled"
-    }
+    },
+    "description": "Lock the logo, colour and title format at company level; leave each employee what is theirs."
   },
   "approvals": {
     "title": "Change requests",
@@ -545,7 +619,8 @@
       "rejected": "Rejected",
       "withdrawn": "Withdrawn",
       "stale": "Superseded"
-    }
+    },
+    "description": "Changes waiting on your approval, and the status of the ones you sent."
   },
   "support": {
     "title": "Support",
@@ -577,7 +652,8 @@
       "pending_platform": "Awaiting team",
       "resolved": "Resolved",
       "closed": "Closed"
-    }
+    },
+    "description": "Open a ticket and follow the support team’s reply."
   },
   "nfc": {
     "title": "NFC tags",
@@ -819,5 +895,25 @@
       "fixed": "Fixed owner",
       "unassigned": "Unassigned"
     }
+  },
+  "nav": {
+    "open": "Open menu",
+    "close": "Close menu",
+    "primary": "Primary navigation",
+    "account": "Account",
+    "groups": {
+      "measure": "Measure",
+      "identity": "Identity",
+      "relations": "Relations",
+      "organization": "Organization"
+    },
+    "theme": "Appearance",
+    "skipToContent": "Skip to content"
+  },
+  "guide": {
+    "title": "User guide",
+    "subtitle": "Every Nomiqa screen, and what you do with it.",
+    "eyebrow": "Preview",
+    "notice": "This screen renders Nomiqa interfaces with sample data, for documentation only."
   }
 }

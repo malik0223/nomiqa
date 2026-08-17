@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import { SHARE_SOURCES } from '@nomiqa/contracts';
 import { slugSchema } from '@nomiqa/validation';
-import { fetchPublicCard, publicCardUrl } from '../../../../lib/cards';
+import { fetchPublicCard, publicCardUrl } from '@/lib/cards';
 
 /**
  * رمز QR للبطاقة.

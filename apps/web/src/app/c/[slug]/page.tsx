@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CardRenderer } from '@nomiqa/ui';
-import { fetchPublicCard, publicCardUrl } from '../../../lib/cards';
+import { CardRenderer, Wordmark } from '@nomiqa/ui';
+import { fetchPublicCard, publicCardUrl } from '@/lib/cards';
 import { AnalyticsBeacon } from './analytics-beacon';
 import { ContactForm } from './contact-form';
 import { PublicCardActions } from './public-card-actions';
@@ -41,7 +41,7 @@ export default async function PublicCardPage({ params, searchParams }: PageProps
   const contactForm = card.snapshot.contactForm;
 
   return (
-    <main lang={locale} dir={dir}>
+    <main lang={locale} dir={dir} className="mx-auto w-full max-w-md px-4 py-6 sm:py-10">
       <CardRenderer snapshot={card.snapshot} template={card.template} locale={locale} />
 
       <PublicCardActions
@@ -69,6 +69,21 @@ export default async function PublicCardPage({ params, searchParams }: PageProps
         source={src}
         campaignCode={k}
       />
+
+      {/*
+        علامة المنصّة في الأسفل بحجم صغير وبلا لون: البطاقة هوية صاحبها
+        لا لوحة إعلانات لنا. وجودها هنا لسبب واحد — الزائر الذي أعجبته
+        البطاقة يحتاج أن يعرف كيف يصنع مثلها.
+      */}
+      <footer className="mt-10 flex justify-center">
+        <a
+          href="/"
+          className="inline-flex items-center gap-2 text-[0.6875rem] text-neutral-400 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+        >
+          <Wordmark showText={false} size="sm" locale={locale} />
+          {locale === 'en' ? 'Made with Nomiqa' : 'صُنعت بنمِقة'}
+        </a>
+      </footer>
     </main>
   );
 }

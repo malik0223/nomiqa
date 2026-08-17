@@ -15,6 +15,7 @@ import { submitContactAction, type ContactFormState } from './contact-actions';
 const TEXT = {
   ar: {
     title: 'شارك بياناتك معي',
+    lede: 'تصل بياناتك إلى صاحب البطاقة وحده.',
     fullName: 'الاسم الكامل',
     email: 'البريد الإلكتروني',
     phone: 'رقم الهاتف',
@@ -30,6 +31,7 @@ const TEXT = {
   },
   en: {
     title: 'Share your details',
+    lede: 'Your details go to the card owner only.',
     fullName: 'Full name',
     email: 'Email',
     phone: 'Phone number',
@@ -54,7 +56,7 @@ const INPUT_TYPES: Record<ContactFormFieldKey, string> = {
 };
 
 const FIELD_CLASS =
-  'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-500 dark:border-neutral-700 dark:bg-neutral-950';
+  'w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white dark:border-neutral-700 dark:bg-neutral-800 dark:focus:bg-neutral-900';
 
 export function ContactForm({
   slug,
@@ -77,10 +79,10 @@ export function ContactForm({
     // النموذج يختفي بعد النجاح: إبقاؤه يدعو إلى إرسال ثانٍ يصنع
     // جهة اتصال مكررة عند صاحب البطاقة.
     return (
-      <section className="mx-auto w-full max-w-md px-5 pb-12">
+      <section className="mt-6">
         <p
           role="status"
-          className="rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-4 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100"
+          className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-center text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
         >
           {state.message}
         </p>
@@ -89,14 +91,18 @@ export function ContactForm({
   }
 
   return (
-    <section className="mx-auto w-full max-w-md px-5 pb-12">
-      <h2 className="mb-4 text-base font-semibold">{text.title}</h2>
+    /* النموذج لوح منفصل عن البطاقة: طلب بيانات الزائر فعل مستقل عن
+       عرض بيانات صاحب البطاقة، ودمجهما في سطح واحد يجعل الحقول تبدو
+       جزءاً من البطاقة نفسها. */
+    <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sheet dark:border-neutral-800 dark:bg-neutral-900">
+      <h2 className="mb-1 font-display text-base font-semibold tracking-tight">{text.title}</h2>
+      <p className="mb-5 text-xs leading-6 text-neutral-500">{text.lede}</p>
 
       <form action={action} className="flex flex-col gap-3">
         {state.status === 'error' && state.message ? (
           <p
             role="alert"
-            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
           >
             {state.message}
           </p>
@@ -180,7 +186,7 @@ function Field({
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+      <label htmlFor={id} className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
         {label}
         {!required && optionalLabel ? (
           <span className="ms-1 font-normal text-neutral-400">({optionalLabel})</span>
@@ -229,7 +235,7 @@ function Consent({
           required={required}
           className="mt-1 h-4 w-4 shrink-0"
         />
-        <span className="text-neutral-700 dark:text-neutral-300">{label}</span>
+        <span className="text-neutral-600 dark:text-neutral-300">{label}</span>
       </label>
 
       {error ? <p className="text-xs text-red-600 dark:text-red-400">{error}</p> : null}
@@ -245,7 +251,7 @@ function Submit({ label, pendingLabel }: { label: string; pendingLabel: string }
       type="submit"
       disabled={pending}
       data-track="contact-submit"
-      className="mt-1 rounded-xl bg-neutral-900 px-5 py-3 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-neutral-900"
+      className="mt-2 rounded-xl bg-neutral-900 px-5 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:bg-white dark:text-neutral-900"
     >
       {pending ? pendingLabel : label}
     </button>

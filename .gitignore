@@ -38,3 +38,9 @@ Thumbs.db
 
 # local infrastructure volumes
 .docker-data/
+
+# مخرجات بناء الدليل: تُولَّد من content.mjs وshots/ بأمر واحد.
+# الصفحة المضمَّنة وحدها تتجاوز أربعة ميغابايت من base64، ومتابعتها
+# تعني مراجعة سلسلة غير مقروءة في كل طلب دمج.
+docs/guide/shots-web/
+docs/guide/index.html

@@ -1,6 +1,6 @@
 import { buildVCard, vCardFileName } from '@nomiqa/ui';
 import { slugSchema } from '@nomiqa/validation';
-import { fetchPublicCard, publicCardUrl } from '../../../../lib/cards';
+import { fetchPublicCard, publicCardUrl } from '@/lib/cards';
 
 /**
  * تنزيل جهة الاتصال.

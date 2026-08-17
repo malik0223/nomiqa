@@ -1,6 +1,7 @@
 import 'server-only';
 import type { ApiErrorBody } from '@nomiqa/contracts';
 import { auth0 } from './auth0';
+import { demoResponse, isDemoMode } from './demo/fixtures';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -34,6 +35,17 @@ interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const { organizationId, body, headers, ...rest } = options;
+
+  // وضع العرض: يُشغَّل يدوياً بـ`NOMIQA_DEMO=1` لالتقاط لقطات دليل
+  // الاستخدام من الشاشات الحقيقية. لا يمسّ أي مسار إنتاجي — المتغيّر
+  // غائب في كل بيئة أخرى، فيمر النداء كالمعتاد. راجع lib/demo/fixtures.
+  if (isDemoMode()) {
+    const fixture = demoResponse(path);
+    if (fixture !== undefined) {
+      return fixture as T;
+    }
+    throw new ApiError(404, 'DEMO_NOT_FOUND', `لا بيانات عرض للمسار ${path}`);
+  }
 
   const { token } = await auth0.getAccessToken();
 

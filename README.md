@@ -9,6 +9,8 @@
 | [خارطة الطريق](Digital_Business_Card_SaaS_Roadmap_AR.md)                     | المراحل والنطاق وبوابات الخروج ومؤشرات الأداء   |
 | [المعمارية التقنية](Digital_Business_Card_SaaS_Technical_Architecture_AR.md) | الحزمة التقنية ونموذج البيانات وضوابط الأمان    |
 | [خطة العمل](Digital_Business_Card_SaaS_Work_Plan_AR.md)                      | السبرنتات والمهام ومعايير الإنجاز               |
+| [دليل الاستخدام المصوّر](docs/guide/README.md)                               | كل شاشة وما تفعله بها، بلقطات فعلية من التطبيق  |
+| [نظام التصميم](docs/design/system.md)                                        | الرموز والمكوّنات وقواعد الاتجاه والوضع الداكن  |
 | [سجل ADR](docs/adr/README.md)                                                | القرارات المعمارية المعتمدة والمفتوحة           |
 | [إعداد Auth0](docs/auth0-setup.md)                                           | خطوات تسجيل التطبيق والـAPI في Auth0            |
 | [الفرق والهيكل](docs/teams/structure.md)                                     | التفويض المحدود، الدعوات، الاستيراد، المغادرة   |

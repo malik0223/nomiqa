@@ -26,7 +26,9 @@
     "admin:list": "pnpm --filter @nomiqa/database admin list",
     "verify:auth0": "dotenv -e .env -- node scripts/verify-auth0.mjs",
     "infra:up": "docker compose up -d",
-    "infra:down": "docker compose down"
+    "infra:down": "docker compose down",
+    "guide:shots": "node scripts/capture-guide-shots.mjs",
+    "guide:build": "node scripts/build-guide.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
