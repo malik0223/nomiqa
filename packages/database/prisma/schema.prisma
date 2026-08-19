@@ -15,7 +15,13 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // DATABASE_URL: اتصال وقت التشغيل. على Supabase استخدم مجمّع
+  // المعاملات (المنفذ 6543) مع pgbouncer=true. محلياً هو الاتصال المباشر.
   url      = env("DATABASE_URL")
+  // DIRECT_URL: اتصال مباشر (أو مجمّع الجلسات، المنفذ 5432) تستخدمه
+  // هجرات Prisma حصراً. مجمّع المعاملات لا يدعم أقفال DDL التي تحتاجها
+  // الهجرات. محلياً اضبطه على نفس قيمة DATABASE_URL.
+  directUrl = env("DIRECT_URL")
 }
 
 // ------------------------------------------------------------

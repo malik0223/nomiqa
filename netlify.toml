@@ -1,0 +1,30 @@
+# ============================================================
+# Nomiqa — Netlify build configuration
+#
+# Netlify hosts ONLY apps/web (the Next.js frontend). The NestJS
+# API, the worker and Redis run elsewhere (see docs/deploy/README.md).
+#
+# pnpm is auto-detected from `packageManager` in the root package.json
+# (pnpm@11.21.0). Netlify runs `pnpm install` for the whole workspace
+# from the repo root, then the build command below compiles the web
+# app and its workspace dependencies via Turbo.
+# ============================================================
+
+[build]
+  # Build web + its workspace deps (@nomiqa/ui, contracts, validation, config).
+  # The trailing "..." tells Turbo to include dependencies.
+  command = "pnpm turbo run build --filter=@nomiqa/web..."
+  publish = "apps/web/.next"
+
+[build.environment]
+  # Matches the repo engines requirement (>=22.11.0).
+  NODE_VERSION = "22"
+  # Turbo cache signature stays stable across Netlify's ephemeral builders.
+  TURBO_TELEMETRY_DISABLED = "1"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Official Next.js runtime adapter (SSR, image optimization, route handlers,
+# middleware). Netlify auto-installs it when it detects Next.js; declared
+# explicitly here because the build command is custom (monorepo).
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
