@@ -11,7 +11,9 @@ export function createRedisConnection(): Redis {
     throw new Error('REDIS_URL مطلوب لتشغيل الـWorker');
   }
 
-  return new Redis(url, { maxRetriesPerRequest: null });
+  // family: 0 يحلّ العنوان بـIPv4 وIPv6 معاً — الشبكة الخاصة في Railway
+  // على IPv6 فقط، وافتراض ioredis (IPv4) يفشل في الوصول إلى redis.railway.internal.
+  return new Redis(url, { maxRetriesPerRequest: null, family: 0 });
 }
 
 /**

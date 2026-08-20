@@ -24,7 +24,9 @@ export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
         }
 
         const logger = new Logger('Redis');
-        const client = new Redis(url, { maxRetriesPerRequest: null });
+        // family: 0 يحلّ العنوان بـIPv4 وIPv6 معاً — الشبكة الخاصة في Railway
+        // على IPv6 فقط، وافتراض ioredis (IPv4) يفشل في الوصول إليها.
+        const client = new Redis(url, { maxRetriesPerRequest: null, family: 0 });
 
         client.on('error', (error: Error) => {
           logger.error(`خطأ في اتصال Redis: ${error.message}`);
