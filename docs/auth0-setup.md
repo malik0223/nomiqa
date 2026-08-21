@@ -100,6 +100,38 @@ access resource server "https://api.nomiqa.local"
 
 ---
 
+## 3.2 إضافة البريد إلى الـAccess Token (Action) ⚠️
+
+**خطوة إلزامية تظهر فقط عند أول دخول حقيقي.** الـAPI يُنشئ سجل المستخدم من
+`email` في حمولة الـAccess Token
+([`user-provisioning.service.ts`](../apps/api/src/auth/user-provisioning.service.ts)).
+لكن Auth0 **لا يضع `email` في الـAccess Token افتراضياً** — يضعه في الـID
+Token فقط، حتى مع طلب scope الـ`email`. بدون الخطوة التالية ينجح الدخول ثم
+يفشل أول طلب للـAPI بالرسالة: «الرمز لا يحتوي على بريد إلكتروني — تحقق من
+Scopes».
+
+`Actions → Triggers → post-login → Add Action → Build from scratch`
+
+سمِّ الإجراء (مثلاً `Add email to access token`)، والصق:
+
+```javascript
+exports.onExecutePostLogin = async (event, api) => {
+  api.accessToken.setCustomClaim('email', event.user.email);
+  api.accessToken.setCustomClaim('email_verified', event.user.email_verified);
+  api.accessToken.setCustomClaim('name', event.user.name);
+};
+```
+
+ثم **Deploy**، واسحب الإجراء إلى مسار **Login** واضغط **Apply**.
+
+> الـAccess Token يقبل هذه المطالبات بلا namespace (بخلاف الـID Token)،
+> لذا تقرؤها الشيفرة باسمها المجرّد `email` و`name`.
+>
+> بعد التفعيل **سجّل الخروج ثم الدخول من جديد** — الرمز الحالي صدر قبل
+> الإجراء ولا يحمل البريد.
+
+---
+
 ## 4. تطبيق Machine-to-Machine — مطلوب الآن
 
 **حذف الحساب لا يعمل بدونه.** الحذف يجب أن ينفَّذ على الطرفين: قاعدة
@@ -180,3 +212,4 @@ pnpm verify:auth0
 | `Callback URL mismatch`                           | العنوان في Auth0 لا يطابق `http://localhost:3000/auth/callback` تماماً     |
 | لا يصدر Refresh Token                             | **Allow Offline Access** غير مفعّل على الـAPI                              |
 | `Service not found` عند الدخول                    | `AUTH0_AUDIENCE` يشير إلى API غير موجود في هذا الـTenant                   |
+| «الرمز لا يحتوي على بريد إلكتروني» عند أول دخول    | لا Action يضيف `email` إلى الـAccess Token — راجع القسم 3.2                 |
