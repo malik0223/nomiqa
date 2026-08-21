@@ -44,20 +44,31 @@ known value:
 new password somewhere safe — you'll paste it into the two URLs below.
 
 ### 1.2 Copy the connection strings
-**Dashboard → Connect (top bar) → ORMs / Prisma**, and take **both**:
+**Dashboard → Connect (top bar) → ORMs / Prisma**, and use the **Session pooler**
+(port **5432**) for both:
 
-- **`DATABASE_URL`** — the *Transaction pooler* URI (port **6543**). Append
-  `?pgbouncer=true`. Used by the app at runtime.
-- **`DIRECT_URL`** — the *Session pooler* URI (port **5432**). Used by Prisma
-  migrations only (the transaction pooler can't take the DDL locks migrations need).
+- **`DATABASE_URL`** — the *Session pooler* URI (port **5432**), no `pgbouncer`
+  flag. Used by the API/worker at runtime.
+- **`DIRECT_URL`** — the *Session pooler* URI too (port **5432**). Used by Prisma
+  migrations.
+
+> **Do NOT use the transaction pooler (port 6543) for `DATABASE_URL` here.** It is
+> built for serverless/edge and does a fresh connection assignment per query — on
+> a persistent server (Railway) that adds ~700 ms to *every* query and causes
+> dashboard timeouts. The session pooler keeps warm connections. (The direct
+> connection `db.<ref>.supabase.co:5432` is faster still but is IPv6-only, so it
+> needs Railway IPv6 egress enabled.)
 
 They look like this (copy the exact host from the dashboard — the `aws-0` vs
 `aws-1` prefix varies):
 
 ```
-DATABASE_URL=postgresql://postgres.aedsbgaamdikokctunim:YOUR-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DATABASE_URL=postgresql://postgres.aedsbgaamdikokctunim:YOUR-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
 DIRECT_URL=postgresql://postgres.aedsbgaamdikokctunim:YOUR-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
 ```
+
+Also make sure the Railway services run in the **same region as Supabase**
+(Singapore / `ap-southeast-1` here) — each service → Settings → Regions.
 
 The Prisma datasource (`packages/database/prisma/schema.prisma`) already reads
 both.
