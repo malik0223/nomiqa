@@ -70,7 +70,10 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
                 height={112}
                 className={cn(
                   'h-28 w-28 object-cover ring-4 ring-white dark:ring-neutral-900',
-                  hasCover && '-mt-16',
+                  // `relative z-10` ليست زينة: الغلاف داخل حاوية `relative`،
+                  // والعنصر المموضَع يُرسم فوق الساكن مهما كان ترتيب الـDOM،
+                  // فبدونها يغطي الغلافُ الصورةَ بدل أن ترتفع هي فوقه.
+                  hasCover && '-mt-16 relative z-10',
                   theme.borderRadius === 'large' ? 'rounded-full' : radius,
                 )}
               />
