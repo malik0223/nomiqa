@@ -63,9 +63,15 @@ They look like this (copy the exact host from the dashboard — the `aws-0` vs
 `aws-1` prefix varies):
 
 ```
-DATABASE_URL=postgresql://postgres.aedsbgaamdikokctunim:YOUR-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+# Runtime (API + worker) — the RLS-respecting role created in 1.3.
+DATABASE_URL=postgresql://nomiqa_app:APP-ROLE-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+# Migrations only — needs owner/DDL rights.
 DIRECT_URL=postgresql://postgres.aedsbgaamdikokctunim:YOUR-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
 ```
+
+> The user in `DATABASE_URL` is `nomiqa_app` (see 1.3), **not** `postgres` — that
+> is what enforces tenant isolation. Percent-encode any special characters in a
+> password (`@`->`%40`, `#`->`%23`, `!`->`%21`), or the URL parser mangles the host.
 
 Also make sure the Railway services run in the **same region as Supabase**
 (Singapore / `ap-southeast-1` here) — each service → Settings → Regions.
@@ -73,7 +79,78 @@ Also make sure the Railway services run in the **same region as Supabase**
 The Prisma datasource (`packages/database/prisma/schema.prisma`) already reads
 both.
 
-### 1.3 Storage buckets
+### 1.3 Create the RLS-respecting app role ⚠️ (isolation depends on this)
+**Do not run the app as Supabase's `postgres` role.**
+
+Tenant isolation in this codebase is enforced by **PostgreSQL RLS**: repository
+queries such as `CardsService.list()` deliberately carry no `organization_id`
+filter and instead run inside `withRlsContext(...)`, which sets
+`app.organization_id` so the policies filter the rows.
+
+Supabase's default `postgres` role has **`BYPASSRLS = true`**, which makes every
+policy inert (`FORCE ROW LEVEL SECURITY` does *not* override `BYPASSRLS`). Running
+the API as `postgres` therefore returns **every organization's rows to every
+user** — a full cross-tenant data leak, with no error anywhere.
+
+In **Dashboard → SQL Editor**, create a dedicated role that respects RLS:
+
+```sql
+-- 1. The runtime role. NOBYPASSRLS is the whole point.
+CREATE ROLE nomiqa_app WITH LOGIN PASSWORD 'YOUR-STRONG-PASSWORD' NOBYPASSRLS;
+
+-- 2. Privileges (plus defaults, so tables from future migrations are covered).
+GRANT USAGE ON SCHEMA public TO nomiqa_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nomiqa_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO nomiqa_app;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO nomiqa_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO nomiqa_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO nomiqa_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO nomiqa_app;
+```
+
+Then allow the role full access to the **global/reference tables** — the ones with
+no `organization_id`, which have RLS enabled but no tenant policy. Without this the
+API cannot read templates, plans or users and fails to boot:
+
+```sql
+CREATE POLICY nomiqa_app_full ON public.users                  FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.organizations          FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.roles                  FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.permissions            FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.role_permissions       FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.membership_roles       FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.platform_admins        FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.platform_audit_logs    FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.feature_flags          FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.feature_flag_overrides FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.templates              FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.template_versions      FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.plans                  FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.plan_prices            FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.payment_events         FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public.coupons                FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+CREATE POLICY nomiqa_app_full ON public._prisma_migrations     FOR ALL TO nomiqa_app USING (true) WITH CHECK (true);
+```
+
+Which URL uses which role:
+
+| Variable | Role | Why |
+| --- | --- | --- |
+| `DATABASE_URL` (API + worker runtime) | **`nomiqa_app`** | respects RLS — this is what isolates tenants |
+| `DIRECT_URL` (Prisma migrations) | `postgres` | migrations need owner/DDL rights |
+
+**Verify isolation after any change to this** — with two orgs where only the first
+owns a card, the second must see zero:
+
+```sql
+SET ROLE nomiqa_app;
+SELECT set_config('app.organization_id', '<ORG-WITHOUT-CARDS>', false);
+SELECT count(*) FROM cards WHERE deleted_at IS NULL;  -- must be 0
+RESET ROLE;
+```
+
+### 1.4 Storage buckets
 **Dashboard → Storage → New bucket**, create two:
 
 | Bucket | Public? | Purpose |
@@ -219,6 +296,8 @@ and the demo card is gated behind `NODE_ENV=development`, so it is skipped.
 ## 5. Go-live checklist
 
 - [ ] Supabase DB password reset; `DATABASE_URL` + `DIRECT_URL` copied.
+- [ ] `nomiqa_app` role created (NOBYPASSRLS) + grants + reference-table policies (1.3).
+- [ ] Isolation verified: a second org sees 0 cards belonging to the first.
 - [ ] Buckets `nomiqa` (private) + `nomiqa-public` (public) created; S3 keys issued.
 - [ ] Auth0 API + Web App created; callback/logout/origin URLs set to the Netlify domain.
 - [ ] Railway: Redis up; API service (migrations green in deploy logs); worker service running.
