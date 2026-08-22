@@ -30,7 +30,9 @@
     "more": "More",
     "darkMode": "Dark",
     "lightMode": "Light",
-    "systemMode": "System"
+    "systemMode": "System",
+    "previous": "Previous",
+    "next": "Next"
   },
   "marketing": {
     "title": "Your digital business card",
@@ -915,5 +917,89 @@
     "subtitle": "Every Nomiqa screen, and what you do with it.",
     "eyebrow": "Preview",
     "notice": "This screen renders Nomiqa interfaces with sample data, for documentation only."
+  },
+  "admin": {
+    "badge": "Platform admin",
+    "backToApp": "Back to app",
+    "nav": {
+      "overview": "Overview",
+      "organizations": "Organizations",
+      "plans": "Plans",
+      "flags": "Feature flags",
+      "audit": "Audit log"
+    },
+    "overview": {
+      "title": "Platform overview",
+      "subtitle": "Totals across every organization. No customer content is shown here.",
+      "organizations": "Organizations",
+      "users": "Users",
+      "memberships": "Active memberships",
+      "files": "Files",
+      "revenueTitle": "Revenue — last 6 months",
+      "collected": "Collected",
+      "paidInvoices": "Paid invoices",
+      "activeSubs": "Active subscriptions",
+      "noRevenue": "No paid invoices yet.",
+      "subsTitle": "Subscriptions by plan",
+      "noSubs": "No subscriptions yet.",
+      "status": "Status",
+      "count": "Count",
+      "seats": "Seats"
+    },
+    "organizations": {
+      "title": "Organizations",
+      "subtitle": "Metadata and counts only — opening an organization's content needs a documented request from its owner.",
+      "count": "{total} organizations",
+      "empty": "No organizations yet.",
+      "name": "Organization",
+      "kind": "Type",
+      "members": "Members",
+      "files": "Files",
+      "created": "Created",
+      "suspend": "Suspend",
+      "unsuspend": "Unsuspend",
+      "suspendTitle": "Suspend {name}",
+      "reason": "Reason",
+      "reasonHint": "Saved to the audit log — write what a colleague would need in a month.",
+      "blockPublic": "Also block public cards",
+      "confirmSuspend": "Suspend"
+    },
+    "plans": {
+      "title": "Plans and pricing",
+      "subtitle": "Editing a price never touches an issued invoice — invoices copy the amount when they are raised.",
+      "plan": "Plan",
+      "public": "Public",
+      "private": "Private",
+      "inactive": "Inactive",
+      "subscribers": "Subscribers",
+      "trial": "Trial days",
+      "features": "Features",
+      "monthly": "Monthly price",
+      "yearly": "Yearly price",
+      "invalidPrice": "Enter an amount in Omani rials greater than zero.",
+      "priceSaved": "Price saved.",
+      "priceNote": "Amounts are stored in baisa (1 OMR = 1000 baisa)."
+    },
+    "flags": {
+      "title": "Feature flags",
+      "subtitle": "The switch saves immediately; the rollout percentage saves on the button.",
+      "empty": "No feature flags defined.",
+      "on": "On",
+      "off": "Off",
+      "overrides": "{count} overrides",
+      "rollout": "Rollout %",
+      "enabled": "Enabled",
+      "invalidRollout": "Rollout must be a whole number between 0 and 100."
+    },
+    "audit": {
+      "title": "Audit log",
+      "subtitle": "Every platform-admin action, newest first. Read-only by design.",
+      "count": "{total} entries",
+      "empty": "Nothing recorded yet.",
+      "action": "Action",
+      "resource": "Resource",
+      "when": "When",
+      "ip": "IP"
+    }
   }
 }
