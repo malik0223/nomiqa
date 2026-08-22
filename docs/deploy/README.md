@@ -64,14 +64,26 @@ They look like this (copy the exact host from the dashboard — the `aws-0` vs
 
 ```
 # Runtime (API + worker) — the RLS-respecting role created in 1.3.
-DATABASE_URL=postgresql://nomiqa_app:APP-ROLE-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql://nomiqa_app.aedsbgaamdikokctunim:APP-ROLE-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
 # Migrations only — needs owner/DDL rights.
 DIRECT_URL=postgresql://postgres.aedsbgaamdikokctunim:YOUR-PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
 ```
 
-> The user in `DATABASE_URL` is `nomiqa_app` (see 1.3), **not** `postgres` — that
-> is what enforces tenant isolation. Percent-encode any special characters in a
-> password (`@`->`%40`, `#`->`%23`, `!`->`%21`), or the URL parser mangles the host.
+> **Two things the pooler is strict about — both fail confusingly:**
+>
+> 1. **Append the project ref to the username**: `nomiqa_app.<project-ref>`, not a
+>    bare `nomiqa_app`. The pooler routes by that suffix, and without it every
+>    connection dies at boot with
+>    `FATAL: (ENOIDENTIFIER) no tenant identifier provided` — which reads like a
+>    multi-tenancy bug in the app, not a username format problem. (A direct,
+>    non-pooler connection takes the bare role name instead.)
+> 2. **Percent-encode special characters** in the password (`@`->`%40`,
+>    `#`->`%23`, `!`->`%21`, `$`->`%24`), or the parser reads the first `@` as the
+>    host separator and mangles the URL. Generate the encoded form with:
+>    `node -e "console.log(encodeURIComponent('YOUR-PASSWORD'))"`
+>
+> The user in `DATABASE_URL` is the `nomiqa_app` role (see 1.3), **not**
+> `postgres` — that is what enforces tenant isolation.
 
 Also make sure the Railway services run in the **same region as Supabase**
 (Singapore / `ap-southeast-1` here) — each service → Settings → Regions.
@@ -306,6 +318,24 @@ and the demo card is gated behind `NODE_ENV=development`, so it is skipped.
 - [ ] `CORS_ORIGINS` on the API = the Netlify domain.
 - [ ] Smoke test: open the site → **Sign in** (Auth0) → land on the dashboard →
       create and publish a card → open its public URL → submit the contact form.
+
+---
+
+## 6. Troubleshooting
+
+Symptoms this deployment actually hit, and what each one means:
+
+| Symptom | Cause |
+| --- | --- |
+| `FATAL: (ENOIDENTIFIER) no tenant identifier provided` at API boot | Pooler username missing the project ref — use `role.<project-ref>` (1.2) |
+| A user sees another organization's cards/contacts | Runtime DB role has `BYPASSRLS` — must be `nomiqa_app` (1.3) |
+| Dashboard "something went wrong", clears on refresh | Transaction pooler (6543) on `DATABASE_URL`; use the session pooler (1.2) |
+| `Cannot find name 'process' / 'URL'` in a Netlify/Railway build | Package uses Node globals without declaring `@types/node` |
+| `@prisma/client did not initialize yet` at container start | Runtime image lacks the generated client — services run `prisma generate` on start |
+| `Domain resolver threw an error` (500, text/plain) on every page | Netlify edge function crashed — usually missing `AUTH0_*` env vars |
+| Login returns `invalid_request` | Auth0 app not authorized on the API — see `docs/auth0-setup.md` §3.1 |
+| "الرمز لا يحتوي على بريد إلكتروني" after login | No post-login Action adding `email` to the access token — `docs/auth0-setup.md` §3.2 |
+| BullMQ cannot reach Redis on Railway | ioredis needs `family: 0` (Railway private network is IPv6-only) |
 
 ---
 
