@@ -1,7 +1,9 @@
+import type { CSSProperties } from 'react';
 import type { CardLinkData, CardSection, CardSnapshot, TemplateDefinition } from '@nomiqa/contracts';
 import { cn } from '../cn';
 import { Icon, type IconName } from '../icon';
 import { linkLabel, toHref, visibleLinks } from './link-utils';
+import { surfaceStyle } from './surfaces';
 
 export interface CardRendererProps {
   snapshot: CardSnapshot;
@@ -17,6 +19,11 @@ export interface CardRendererProps {
  * خاص.** محرك واحد يستقبل البيانات وتعريف القالب والثيم وترتيب
  * الأقسام. إضافة قالب تصبح صفاً في قاعدة البيانات لا مكوّناً جديداً،
  * وإصلاح خلل في العرض يصلحه في كل القوالب دفعة واحدة.
+ *
+ * شخصية القالب البصرية تأتي من `template.surface` عبر جدول الأنماط في
+ * [`surfaces.ts`](./surfaces.ts) — جدول لا مكوّنات، حفاظاً على القاعدة
+ * أعلاه. سطح غائب يعني `flat`: السلوك الأصلي حرفياً، فلا تتغيّر بطاقة
+ * منشورة قبل وجود الأسطح.
  *
  * لا حالة ولا تأثيرات هنا: المكوّن خادمي بالكامل، فتُقدَّم الصفحة
  * العامة بلا JavaScript تقريباً (§4.9).
@@ -47,10 +54,25 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
   const accent = theme.primaryColor ?? '#2a3d6f';
   const radius = radiusClass(theme.borderRadius);
   const centered = template.layout === 'centered' || template.layout === 'cover';
-  const hasCover = template.supportsCover && Boolean(snapshot.media.coverUrl);
+  const surface = surfaceStyle(template.surface);
+  const hasCover =
+    template.supportsCover && Boolean(snapshot.media.coverUrl) && surface.coverMode !== 'none';
+
+  // لون الهوية يُمرَّر كمتغيّر CSS لا كنمط سطري على كل عنصر: جدول
+  // الأسطح يبقى أصنافاً خالصة، ويستطيع صنف واحد مزج اللون بشفافية.
+  const accentVar = { '--nq-accent': accent } as unknown as CSSProperties;
 
   // ترتيب الأقسام من البطاقة إن وُجد، وإلا من القالب.
   const sections = snapshot.sectionOrder?.length > 0 ? snapshot.sectionOrder : template.sections;
+
+  const avatarShapeClass =
+    surface.avatarShape === 'circle'
+      ? theme.borderRadius === 'large'
+        ? 'rounded-full'
+        : radius
+      : surface.avatarShape === 'portrait'
+        ? 'rounded-sm'
+        : 'rounded-2xl';
 
   const renderSection = (section: CardSection) => {
     switch (section) {
@@ -58,7 +80,7 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
         return (
           <header
             key="identity"
-            className={cn('flex flex-col gap-4 px-6', centered ? 'items-center' : 'items-start')}
+            className={cn(surface.header, centered ? 'items-center' : 'items-start')}
           >
             {/* الصورة ترتفع فوق الغلاف حين يوجد غلاف: التداخل يربط
                 الاثنين بصرياً بدل أن يبدوا لوحين منفصلين. */}
@@ -69,29 +91,28 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
                 width={112}
                 height={112}
                 className={cn(
-                  'h-28 w-28 object-cover ring-4 ring-white dark:ring-neutral-900',
+                  surface.avatar,
                   // `relative z-10` ليست زينة: الغلاف داخل حاوية `relative`،
                   // والعنصر المموضَع يُرسم فوق الساكن مهما كان ترتيب الـDOM،
                   // فبدونها يغطي الغلافُ الصورةَ بدل أن ترتفع هي فوقه.
-                  hasCover && '-mt-16 relative z-10',
-                  theme.borderRadius === 'large' ? 'rounded-full' : radius,
+                  hasCover && surface.coverMode === 'band' && '-mt-16 relative z-10',
+                  avatarShapeClass,
                 )}
               />
             ) : null}
 
-            <div className={cn('flex flex-col gap-1', centered ? 'items-center text-center' : 'items-start')}>
-              <h1 className="font-display text-[1.625rem] font-bold leading-tight tracking-tight">
-                {content.fullName}
-              </h1>
+            <div
+              className={cn(
+                'flex flex-col gap-1',
+                centered ? 'items-center text-center' : 'items-start',
+              )}
+            >
+              <h1 className={surface.name}>{content.fullName}</h1>
 
-              {content.jobTitle ? (
-                <p className="text-[0.9375rem] font-medium" style={{ color: accent }}>
-                  {content.jobTitle}
-                </p>
-              ) : null}
+              {content.jobTitle ? <p className={surface.role}>{content.jobTitle}</p> : null}
 
               {content.organizationName ? (
-                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+                <p className={surface.org}>
                   <Icon name="building" size={14} />
                   {content.organizationName}
                   {content.department ? ` — ${content.department}` : ''}
@@ -102,7 +123,7 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
             {content.bio ? (
               <p
                 className={cn(
-                  'max-w-prose text-sm leading-7 text-neutral-600 dark:text-neutral-300',
+                  'max-w-prose text-sm leading-7 opacity-80',
                   centered && 'text-center',
                 )}
               >
@@ -111,7 +132,7 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
             ) : null}
 
             {content.addressLine ? (
-              <p className="flex items-center gap-1.5 text-[0.8125rem] text-neutral-500">
+              <p className={surface.meta}>
                 <Icon name="globe" size={14} />
                 {content.addressLine}
               </p>
@@ -122,7 +143,7 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
       case 'actions':
         if (primary.length === 0) return null;
         return (
-          <section key="actions" className="flex flex-col gap-2.5 px-6">
+          <section key="actions" className={cn('flex flex-col gap-2.5', surface.actionsPadding)}>
             {primary.map((link) => (
               <a
                 key={link.id}
@@ -134,11 +155,10 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
                 // onClick هنا كانت ستحوّل كل البطاقة إلى مكوّن عميل.
                 data-link-id={link.id}
                 className={cn(
-                  'flex items-center justify-center gap-2 px-5 py-3.5 text-center text-sm font-semibold text-white',
+                  surface.primary,
                   'transition-transform duration-150 active:scale-[0.99]',
                   radius,
                 )}
-                style={{ backgroundColor: accent }}
               >
                 <Icon name={linkIcon(link)} size={17} />
                 {linkLabel(link, locale)}
@@ -150,42 +170,48 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
       case 'links':
         if (secondary.length === 0) return null;
         return (
-          <section key="links" className="flex flex-col gap-2 px-6">
+          <section key="links" className={surface.linkSection}>
             {secondary.map((link) => (
               <a
                 key={link.id}
                 href={toHref(link)}
                 {...externalAttributes(link.type)}
                 data-link-id={link.id}
-                className={cn(
-                  'group flex items-center gap-3 border border-neutral-200 bg-white/60 px-4 py-3 text-sm',
-                  'transition-colors hover:border-neutral-300 hover:bg-neutral-50',
-                  'dark:border-neutral-800 dark:bg-neutral-900/40 dark:hover:bg-neutral-800/60',
-                  radius,
-                )}
+                className={cn(surface.link, surface.linkLayout !== 'text' && radius)}
               >
-                <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: `${accent}14`, color: accent }}
-                >
-                  <Icon name={linkIcon(link)} size={16} />
-                </span>
+                {surface.linkLayout === 'grid' ? (
+                  <>
+                    <span className={surface.linkIcon}>
+                      <Icon name={linkIcon(link)} size={16} />
+                    </span>
+                    <span className={surface.linkLabel}>{linkLabel(link, locale)}</span>
+                  </>
+                ) : surface.linkLayout === 'text' ? (
+                  <>
+                    <span className={surface.linkLabel}>{linkLabel(link, locale)}</span>
+                    {/* `bdi` لا `dir="ltr"`: العزل يكفي لعرض القيمة
+                        اللاتينية بترتيبها الصحيح، بينما فرض الاتجاه كان
+                        يزيحها إلى الحافة المقابلة للسطر العربي فوقها. */}
+                    <bdi className={surface.linkValue}>
+                      {displayValue(link.type, link.value)}
+                    </bdi>
+                  </>
+                ) : (
+                  <>
+                    <span className={surface.linkIcon}>
+                      <Icon name={linkIcon(link)} size={16} />
+                    </span>
 
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{linkLabel(link, locale)}</span>
-                  {/* `bdi` لا `dir="ltr"`: العزل يكفي لعرض القيمة
-                      اللاتينية بترتيبها الصحيح، بينما فرض الاتجاه كان
-                      يزيحها إلى الحافة المقابلة للسطر العربي فوقها. */}
-                  <bdi className="block truncate text-xs text-neutral-500">
-                    {displayValue(link.type, link.value)}
-                  </bdi>
-                </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={surface.linkLabel}>{linkLabel(link, locale)}</span>
+                      <bdi className={surface.linkValue}>
+                        {displayValue(link.type, link.value)}
+                      </bdi>
+                    </span>
 
-                <Icon
-                  name="chevronEnd"
-                  size={16}
-                  className="text-neutral-300 transition-transform group-hover:translate-x-0.5 rtl:-scale-x-100 dark:text-neutral-600"
-                />
+                    <Icon name="chevronEnd" size={16} className={surface.chevron} />
+                  </>
+                )}
               </a>
             ))}
           </section>
@@ -198,33 +224,51 @@ export function CardRenderer({ snapshot, template, locale }: CardRendererProps) 
   };
 
   return (
-    <article
-      dir={dir}
-      className="mx-auto flex w-full max-w-md flex-col gap-7 overflow-hidden rounded-2xl bg-white pb-10 shadow-sheet dark:bg-neutral-900"
-    >
-      {hasCover ? (
+    <article dir={dir} className={surface.article} style={accentVar}>
+      {/* طبقات زخرفية خالصة: لا محتوى فيها ولا تلتقط مؤشراً، ويقرؤها
+          الجدول لا شرطٌ لكل سطح. */}
+      {surface.layers.map((layer) => (
+        <div key={layer} className={layer} aria-hidden="true" />
+      ))}
+
+      {hasCover && surface.coverMode === 'fill' ? (
+        <img src={snapshot.media.coverUrl!} alt="" className={surface.cover} />
+      ) : null}
+
+      {hasCover && surface.coverMode === 'band' ? (
         <div className="relative">
-          <img src={snapshot.media.coverUrl!} alt="" className="h-36 w-full object-cover" />
+          <img src={snapshot.media.coverUrl!} alt="" className={surface.cover} />
           {/* شعار المؤسسة يعلو الغلاف حين يوجدان معاً: مكانه المعتاد
               على القرطاسية المطبوعة، ووضعه في متن البطاقة يجعله
               ينافس الاسم على الانتباه. */}
           {snapshot.media.logoUrl ? (
-            <img
-              src={snapshot.media.logoUrl}
-              alt=""
-              className="absolute end-4 top-4 h-9 max-w-24 rounded-sm bg-white/90 object-contain p-1.5 shadow-sheet"
-            />
+            <img src={snapshot.media.logoUrl} alt="" className={surface.logoOnCover} />
           ) : null}
         </div>
       ) : null}
 
+      {hasCover && surface.coverMode === 'fill' && snapshot.media.logoUrl ? (
+        <img src={snapshot.media.logoUrl} alt="" className={surface.logoOnCover} />
+      ) : null}
+
       {!hasCover && snapshot.media.logoUrl ? (
-        <div className={cn('px-6 pt-8', centered ? 'flex justify-center' : '')}>
-          <img src={snapshot.media.logoUrl} alt="" className="h-8 max-w-32 object-contain" />
+        <div
+          className={cn(
+            surface.logoWrapper,
+            centered ? 'flex justify-center' : '',
+            surface.layers.length > 0 && 'relative z-10',
+          )}
+        >
+          <img src={snapshot.media.logoUrl} alt="" className={surface.logoStandalone} />
         </div>
       ) : null}
 
-      <div className={cn('flex flex-col gap-7', !hasCover && !snapshot.media.logoUrl && 'pt-9')}>
+      <div
+        className={cn(
+          surface.content,
+          !hasCover && !snapshot.media.logoUrl && surface.contentTopPadding,
+        )}
+      >
         {sections.map(renderSection)}
       </div>
     </article>

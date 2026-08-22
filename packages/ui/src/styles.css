@@ -323,6 +323,98 @@ body {
     right bottom;
 }
 
+/* ============================================================
+   أسطح البطاقات
+   ------------------------------------------------------------
+   استثناء مقصود من قاعدة «لا تدرّجات»: تلك القاعدة تحكم واجهة
+   نمِقة، وهذه الأصناف لا تُستعمل إلا داخل `CardRenderer` الذي يعرض
+   هوية **صاحب البطاقة** لا هوية المنصّة (راجع docs/design/system.md).
+   ما لا يمكن التعبير عنه بأصناف Tailwind وحدها يعيش هنا.
+   ============================================================ */
+
+.nq-aurora-sky {
+  background-image:
+    radial-gradient(45% 40% at 20% 20%, #7c3aed 0%, transparent 60%),
+    radial-gradient(40% 38% at 82% 26%, #22d3ee 0%, transparent 62%),
+    radial-gradient(48% 42% at 55% 88%, #e879f9 0%, transparent 62%),
+    radial-gradient(40% 40% at 10% 80%, #3b82f6 0%, transparent 60%);
+  background-size: 190% 190%;
+  filter: saturate(1.25) blur(2px);
+  animation: nq-aurora-drift 15s ease-in-out infinite alternate;
+}
+
+@keyframes nq-aurora-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 30%;
+  }
+  100% {
+    background-position: 30% 100%;
+  }
+}
+
+.nq-neon-grid {
+  background-image:
+    linear-gradient(rgb(139 92 246 / 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(139 92 246 / 0.18) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 72%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 72%);
+}
+
+.nq-neon-bar {
+  background-image: linear-gradient(90deg, transparent, #22d3ee, #a855f7, transparent);
+  box-shadow: 0 0 22px 3px rgb(168 85 247 / 0.8);
+}
+
+.nq-neon-glow {
+  text-shadow:
+    0 0 10px rgb(168 85 247 / 0.95),
+    0 0 34px rgb(168 85 247 / 0.55);
+}
+
+.nq-neon-cta {
+  background-image: linear-gradient(90deg, #22d3ee, #a855f7);
+  box-shadow: 0 0 24px -4px rgb(168 85 247 / 0.8);
+}
+
+/* ظلّان متقابلان يخرجان العنصر من السطح بدل أن يضعاه فوقه. */
+.nq-relief-out {
+  box-shadow:
+    6px 6px 14px rgb(160 150 190 / 0.5),
+    -6px -6px 14px rgb(255 255 255 / 0.95);
+}
+
+.nq-foil-glow {
+  background-image: radial-gradient(circle at 30% 12%, rgb(227 192 123 / 0.09), transparent 55%);
+}
+
+/* الذهب المختوم: التدرّج يُقصّ على المحارف نفسها. */
+.nq-foil-text {
+  background-image: linear-gradient(
+    100deg,
+    #8a6b32 0%,
+    #f0dda6 26%,
+    #fffaf0 44%,
+    #e3c07b 62%,
+    #8a6b32 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.nq-foil-cta {
+  background-image: linear-gradient(100deg, #c9a765, #f2e2b6, #c9a765);
+}
+
+.nq-spatial-halo {
+  background-image: radial-gradient(60% 46% at 50% 0%, rgb(99 102 241 / 0.42), transparent 70%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

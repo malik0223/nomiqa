@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import type { TemplateSummary } from '@nomiqa/contracts';
-import { Alert, Button, Field, Input, Panel, Select, cn } from '@nomiqa/ui';
+import { Alert, Button, Field, Input, Panel, Select, cn, surfaceSwatch } from '@nomiqa/ui';
 import { createCardAction } from '../actions';
 
 /**
@@ -70,7 +70,7 @@ export function NewCardForm({
             {t('cards.fields.template')}
           </legend>
 
-          <div className="mt-2.5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-2.5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {templates.map((template) => {
               const selected = templateKey === template.key;
 
@@ -96,7 +96,7 @@ export function NewCardForm({
                   {/* رسم تخطيطي صغير للقالب: اسم القالب وحده لا يخبر
                       المستخدم بشيء قبل أن يراه، والفرق بين «كلاسيكي»
                       و«بغلاف» فرق تخطيط لا فرق تسمية. */}
-                  <TemplateSketch layout={template.key} selected={selected} />
+                  <TemplateSketch definition={template.definition} selected={selected} />
 
                   <span className={cn('font-medium', selected && 'text-accent')}>
                     {locale === 'en' ? (template.nameEn ?? template.name) : template.name}
@@ -120,20 +120,64 @@ export function NewCardForm({
 }
 
 /** تخطيط مصغَّر للقالب: كتل رمادية تحاكي ترتيب أقسام البطاقة. */
-function TemplateSketch({ layout, selected }: { layout: string; selected: boolean }) {
-  const bar = selected ? 'bg-accent-line/50' : 'bg-surface-3';
-  const solid = selected ? 'bg-accent-line' : 'bg-line-strong';
+/**
+ * مصغّر القالب.
+ *
+ * يرسم بألوان القالب الحقيقية لا بألوان الواجهة: الفرق بين «نيون»
+ * و«صحيفة» لونٌ وتباين قبل أن يكون تخطيطاً، ومصغّر رمادي موحّد يجعل
+ * أحد عشر قالباً تبدو واحداً.
+ */
+function TemplateSketch({
+  definition,
+  selected,
+}: {
+  definition: TemplateSummary['definition'];
+  selected: boolean;
+}) {
+  const swatch = surfaceSwatch(definition.surface);
+  const accent = definition.theme.primaryColor ?? swatch.ink;
+  const centered = definition.layout === 'centered' || definition.layout === 'cover';
+  const grid = definition.surface === 'bento';
 
   return (
     <span
       aria-hidden="true"
-      className="flex h-16 w-full max-w-24 flex-col items-center gap-1.5 rounded-sm border border-line bg-surface-2 p-2"
+      className={cn(
+        'flex h-16 w-full max-w-24 flex-col gap-1.5 overflow-hidden rounded-sm border p-2',
+        centered ? 'items-center' : 'items-start',
+        selected ? 'border-accent-line' : 'border-line',
+      )}
+      style={{ backgroundColor: swatch.bg }}
     >
-      {layout === 'cover' ? <span className={cn('h-3 w-full rounded-xs', solid)} /> : null}
-      <span className={cn('h-3.5 w-3.5 rounded-full', solid)} />
-      <span className={cn('h-1 w-10 rounded-full', bar)} />
-      <span className={cn('h-1.5 w-full rounded-xs', bar)} />
-      <span className={cn('h-1.5 w-full rounded-xs', bar)} />
+      {definition.supportsCover ? (
+        <span className="h-3 w-full rounded-xs" style={{ backgroundColor: accent, opacity: 0.75 }} />
+      ) : null}
+
+      <span
+        className={cn('h-3.5 w-3.5 shrink-0', grid ? 'rounded-xs' : 'rounded-full')}
+        style={{ backgroundColor: accent }}
+      />
+      <span className="h-1 w-10 rounded-full" style={{ backgroundColor: swatch.ink, opacity: 0.8 }} />
+
+      {grid ? (
+        <span className="grid w-full grid-cols-2 gap-0.5">
+          <span className="h-1.5 rounded-xs" style={{ backgroundColor: swatch.ink, opacity: 0.28 }} />
+          <span className="h-1.5 rounded-xs" style={{ backgroundColor: swatch.ink, opacity: 0.28 }} />
+          <span className="h-1.5 rounded-xs" style={{ backgroundColor: swatch.ink, opacity: 0.28 }} />
+          <span className="h-1.5 rounded-xs" style={{ backgroundColor: swatch.ink, opacity: 0.28 }} />
+        </span>
+      ) : (
+        <>
+          <span
+            className="h-1.5 w-full rounded-xs"
+            style={{ backgroundColor: swatch.ink, opacity: 0.28 }}
+          />
+          <span
+            className="h-1.5 w-full rounded-xs"
+            style={{ backgroundColor: swatch.ink, opacity: 0.28 }}
+          />
+        </>
+      )}
     </span>
   );
 }

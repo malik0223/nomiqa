@@ -24,4 +24,5 @@ export { Wordmark } from './wordmark';
 
 export { CardRenderer, type CardRendererProps } from './card/card-renderer';
 export { toHref, linkLabel, visibleLinks, normalizeUrl } from './card/link-utils';
+export { surfaceStyle, surfaceSwatch, type SurfaceStyle, type SurfaceSwatch } from './card/surfaces';
 export { buildVCard, vCardFileName, type VCardOptions } from './card/vcard';

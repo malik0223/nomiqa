@@ -42,11 +42,38 @@ export interface CardTheme {
   colorScheme?: 'light' | 'dark' | 'system';
 }
 
+/**
+ * المعالجة البصرية لسطح البطاقة.
+ *
+ * قيمة واحدة تحكم شخصية القالب كاملة (الخلفية والطبقات الزخرفية
+ * وشكل الصورة وهيئة الروابط)، لأن هذه الخصائص ليست مستقلة: «زجاج»
+ * بروابط «صحيفة» ليس قالباً بل خطأ. القيمة صفٌّ في قاعدة البيانات
+ * ولا تضيف مكوّناً جديداً — راجع §4.4.
+ */
+export const CARD_SURFACES = [
+  'flat',
+  'aurora',
+  'glass',
+  'neon',
+  'bento',
+  'relief',
+  'editorial',
+  'foil',
+  'spatial',
+] as const;
+export type CardSurface = (typeof CARD_SURFACES)[number];
+
 export interface TemplateDefinition {
   layout: 'centered' | 'start' | 'cover';
   sections: CardSection[];
   supportsCover: boolean;
   theme: CardTheme;
+  /**
+   * اختياري عمداً: القوالب الثلاثة الأولى صدرت قبل وجود هذا الحقل،
+   * ولقطاتها المنشورة محفوظة بلا قيمة له. الغياب يعني `flat` — أي
+   * السلوك السابق حرفياً — فلا تتغيّر بطاقة منشورة بإضافة الحقل.
+   */
+  surface?: CardSurface;
 }
 
 export interface CardContent {
