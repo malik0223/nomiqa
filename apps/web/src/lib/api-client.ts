@@ -85,5 +85,16 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  // جسم فارغ على 200 ليس خطأ: حين يعيد معالج NestJS القيمة `null`
+  // يرسل محوّل Express جسماً فارغاً لا النص `null`
+  // (`isNil(body) → response.send()`)، وهو ما يفعله مثلاً
+  // `/billing/subscription` لمؤسسة بلا اشتراك. تمرير ذلك إلى
+  // `response.json()` كان يرمي SyntaxError — وهو ليس ApiError، فتعرضه
+  // الشاشات كـ«حدث خطأ غير متوقع» بدل الحالة الفارغة الصحيحة.
+  const payload = await response.text();
+  if (payload.length === 0) {
+    return null as T;
+  }
+
+  return JSON.parse(payload) as T;
 }
