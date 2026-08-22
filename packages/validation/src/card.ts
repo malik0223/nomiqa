@@ -1,7 +1,7 @@
 import { CARD_LINK_TYPES, CARD_SECTIONS, SOCIAL_PLATFORMS } from '@nomiqa/contracts';
 import { z } from 'zod';
 import { cardContactFormSchema } from './contact.js';
-import { emailSchema, localeSchema, phoneSchema, slugSchema, uuidSchema } from './primitives.js';
+import { emailSchema, localeSchema, phoneSchema, uuidSchema } from './primitives.js';
 
 /**
  * مخططات البطاقة.
@@ -166,8 +166,6 @@ export const sectionOrderSchema = z
 export const createCardSchema = z
   .object({
     fullName: z.string().trim().min(2, 'الاسم قصير جداً').max(120),
-    /** يُولَّد من الاسم أو البريد حين لا يختاره المستخدم. */
-    slug: slugSchema.optional(),
     templateKey: z
       .string()
       .trim()
@@ -192,7 +190,6 @@ export type CreateCardInput = z.infer<typeof createCardSchema>;
  */
 export const cardUpdateFieldsSchema = z
   .object({
-    slug: slugSchema.optional(),
     templateKey: z
       .string()
       .trim()

@@ -273,7 +273,8 @@
       "slugLocked": "The link is fixed after publishing — every QR code you shared depends on it.",
       "template": "Template",
       "defaultLocale": "Default card language",
-      "defaultLocaleHint": "The language visitors see. Independent from your dashboard language."
+      "defaultLocaleHint": "The language visitors see. Independent from your dashboard language.",
+      "slugGenerated": "Generated automatically so nobody can guess or enumerate card links. It never changes."
     },
     "links": {
       "title": "Contact methods and links",

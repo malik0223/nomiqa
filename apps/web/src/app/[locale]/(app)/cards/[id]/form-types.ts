@@ -18,7 +18,6 @@ import type { CardUpdateFieldsInput } from '@nomiqa/validation';
  * (`toPayload`) لا في كل حقل.
  */
 export interface CardFormValues {
-  slug: string;
   templateKey: string;
   defaultLocale: 'ar' | 'en';
   theme: {
@@ -94,7 +93,6 @@ export function toFormValues(card: CardDetail): CardFormValues {
   });
 
   return {
-    slug: card.slug,
     templateKey: card.templateKey,
     defaultLocale: (card.defaultLocale === 'en' ? 'en' : 'ar') as 'ar' | 'en',
     theme: {
@@ -187,7 +185,6 @@ export function toPayload(values: CardFormValues): CardUpdateFieldsInput {
     }));
 
   return {
-    slug: values.slug,
     templateKey: values.templateKey,
     defaultLocale: values.defaultLocale,
     theme: {
@@ -228,6 +225,8 @@ export function toPreviewSnapshot(
   values: CardFormValues,
   template: TemplateSummary | undefined,
   mediaPreview: { avatarUrl?: string | null; coverUrl?: string | null; logoUrl?: string | null },
+  /** الرابط لم يعد حقلاً في النموذج — يُولَّد ولا يُحرَّر. */
+  slug: string,
 ): CardSnapshot {
   const content: CardSnapshot['content'] = {};
 
@@ -245,7 +244,7 @@ export function toPreviewSnapshot(
   }
 
   return {
-    slug: values.slug,
+    slug,
     templateKey: values.templateKey,
     templateVersion: template?.latestVersion ?? 1,
     defaultLocale: values.defaultLocale,

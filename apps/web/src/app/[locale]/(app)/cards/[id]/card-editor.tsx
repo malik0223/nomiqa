@@ -215,7 +215,7 @@ export function CardEditor({
   }
 
   const previewSnapshot = useMemo(
-    () => toPreviewSnapshot(values, selectedTemplate, mediaPreview),
+    () => toPreviewSnapshot(values, selectedTemplate, mediaPreview, card.slug),
     [values, selectedTemplate, mediaPreview],
   );
 
@@ -493,21 +493,15 @@ export function CardEditor({
           <Panel>
             <PanelHeader icon="link" title={t('cards.editor.link')} />
 
+            {/* الرابط يُولَّد ولا يُحرَّر: اسم وحده كان رابطاً يمكن
+                تخمينه وعدّه للوصول إلى بطاقات لم يشاركها أصحابها. */}
             <Field
               className="mt-5"
               htmlFor="slug"
               label={t('cards.fields.slug')}
-              hint={
-                card.publishedAt !== null ? t('cards.fields.slugLocked') : t('cards.fields.slugHint')
-              }
+              hint={t('cards.fields.slugGenerated')}
             >
-              <Input
-                id="slug"
-                dir="ltr"
-                disabled={card.publishedAt !== null}
-                {...register('slug')}
-                className="font-mono"
-              />
+              <Input id="slug" dir="ltr" readOnly value={card.slug} className="font-mono" />
             </Field>
           </Panel>
 

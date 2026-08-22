@@ -18,12 +18,13 @@ import {
   type TemplateSummary,
 } from '@nomiqa/contracts';
 import { Prisma, withRlsContext } from '@nomiqa/database';
-import { slugifyName, type CreateCardInput, type UpdateCardInput } from '@nomiqa/validation';
+import type { CreateCardInput, UpdateCardInput } from '@nomiqa/validation';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { EntitlementsService } from '../billing/entitlements.service.js';
 import { BrandingService } from '../branding/branding.service.js';
 import { lockedFieldsTouched } from '../branding/card-policy.js';
 import { StorageService } from '../files/storage.service.js';
+import { buildCardSlug } from './card-slug.js';
 import {
   buildSnapshot,
   parseContactForm,
@@ -220,16 +221,14 @@ export class CardsService {
 
     const template = await this.requireTemplate(input.templateKey);
 
-    // الرابط المختار صراحةً يُرفض عند التعارض؛ المولَّد يُعالج بلاحقة.
-    const explicitSlug = input.slug !== undefined;
-    if (explicitSlug && !(await this.isSlugAvailable(input.slug!))) {
-      throw new ConflictException('هذا الرابط مستخدم، اختر رابطاً آخر');
-    }
-
-    const base = explicitSlug ? input.slug! : slugifyName(input.fullName) || 'card';
-
+    // الرابط يُولَّد دائماً ولا يختاره المستخدم.
+    //
+    // الاسم وحده كان يعطي `/salim-aldhahli` لأول من يحمله: رابط يمكن
+    // تخمينه من بطاقة ورقية أو توقيع بريد، ويمكن عدّه لاكتشاف بطاقات
+    // لم يشاركها أصحابها. اللاحقة العشوائية تُلحق دائماً لا عند
+    // التعارض فقط، فيبقى الجزء المقروء للاحترافية والعشوائي للمنع.
     for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt += 1) {
-      const slug = attempt === 0 ? base : `${base}-${randomSuffix()}`;
+      const slug = buildCardSlug(input.fullName);
 
       try {
         const card = await withRlsContext(this.prisma, { organizationId }, async (tx) => {
@@ -267,19 +266,18 @@ export class CardsService {
 
         return this.get(organizationId, card.id);
       } catch (error) {
-        // الرابط سُحب بين الفحص والإدراج. الاعتماد على القيد لا على
-        // الفحص المسبق مقصود: الفحص يحسّن الرسالة، والقيد هو الضمان.
-        if (isUniqueViolation(error) && !explicitSlug) {
-          continue;
-        }
+        // القيد الفريد هو الضمان لا الفحص المسبق: بين الفحص والإدراج
+        // نافذة يمكن أن يُسجَّل فيها الرابط نفسه. التصادم هنا نادر جداً
+        // (٢٧ مليار احتمال) فالمحاولة التالية تكفي.
         if (isUniqueViolation(error)) {
-          throw new ConflictException('هذا الرابط مستخدم، اختر رابطاً آخر');
+          continue;
         }
         throw error;
       }
     }
 
-    throw new ConflictException('تعذّر توليد رابط فريد، اختر رابطاً بنفسك');
+    // ست محاولات فاشلة ليست تصادماً بل خلل في التوليد أو القاعدة.
+    throw new ConflictException('تعذّر توليد رابط فريد، حاول مرة أخرى');
   }
 
   /**
@@ -316,17 +314,6 @@ export class CardsService {
       );
     }
 
-    if (input.slug !== undefined && input.slug !== card.slug) {
-      // القاعدة الحرجة §7.4: الرابط ثابت بعد النشر. كل QR مطبوع وكل
-      // رابط مُشارَك يشير إليه، وتغييره يكسرها كلها دفعة واحدة.
-      if (card.publishedAt !== null) {
-        throw new ConflictException('لا يمكن تغيير الرابط بعد النشر — الروابط المشاركة تعتمد عليه');
-      }
-      if (!(await this.isSlugAvailable(input.slug))) {
-        throw new ConflictException('هذا الرابط مستخدم، اختر رابطاً آخر');
-      }
-    }
-
     const template =
       input.templateKey !== undefined && input.templateKey !== card.templateKey
         ? await this.requireTemplate(input.templateKey)
@@ -347,7 +334,6 @@ export class CardsService {
       const updated = await tx.card.updateMany({
         where: { id: cardId, revision: input.revision, deletedAt: null },
         data: {
-          ...(input.slug !== undefined ? { slug: input.slug } : {}),
           ...(template
             ? { templateKey: template.key, templateVersion: template.latestVersion }
             : {}),
@@ -900,10 +886,6 @@ function hasUnpublishedChanges(
 ): boolean {
   if (status !== 'published') return false;
   return publishedRevision === undefined || publishedRevision !== revision;
-}
-
-function randomSuffix(): string {
-  return Math.random().toString(36).slice(2, 7);
 }
 
 function isUniqueViolation(error: unknown): boolean {
