@@ -53,7 +53,16 @@ export function CardEditor({
   const t = useTranslations();
   const router = useRouter();
 
-  const [revision, setRevision] = useState(card.revision);
+  /**
+   * الإصدار يعيش في مرجع لا في حالة.
+   *
+   * ربطه بالحالة كان يجعل `save` تتغيّر هويتها بعد كل حفظ ناجح، فيعيد
+   * تأثير الحفظ التلقائي جدولة حفظ جديد إلى ما لا نهاية — ولأن الطلبين
+   * المتراكبين يحملان الإصدار نفسه كان الثاني يرتدّ بتعارض زائف.
+   */
+  const revisionRef = useRef(card.revision);
+  /** حفظ جارٍ. يُسلسِل الطلبات فلا يرسل اثنان الإصدار نفسه أبداً. */
+  const inFlight = useRef<Promise<boolean> | null>(null);
   const [status, setStatus] = useState(card.status);
   const [hasUnpublished, setHasUnpublished] = useState(card.hasUnpublishedChanges);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -89,30 +98,49 @@ export function CardEditor({
   const save = useCallback(async (): Promise<boolean> => {
     if (conflict) return false;
 
-    setSaving(true);
-    setError(null);
-
-    const result = await saveCardAction(card.id, revision, toPayload(getValues()));
-
-    setSaving(false);
-
-    if (result.ok && result.card) {
-      setRevision(result.card.revision);
-      setStatus(result.card.status);
-      setHasUnpublished(result.card.hasUnpublishedChanges);
-      setSavedAt(new Date());
-      return true;
+    // ننتظر الحفظ الجاري قبل بدء آخر: الطلب الثاني يجب أن يرى الإصدار
+    // الذي أنتجه الأول، وإلا ارتدّ بتعارض ليس تعارضاً حقيقياً.
+    const pending = inFlight.current;
+    if (pending) {
+      await pending.catch(() => false);
+      if (conflict) return false;
     }
 
-    if (result.conflict) {
-      // لا نحفظ فوق تعديل غيرنا: نوقف الحفظ التلقائي ونطلب إعادة التحميل.
-      setConflict(true);
+    const run = (async (): Promise<boolean> => {
+      setSaving(true);
+      setError(null);
+
+      const result = await saveCardAction(card.id, revisionRef.current, toPayload(getValues()));
+
+      setSaving(false);
+
+      if (result.ok && result.card) {
+        revisionRef.current = result.card.revision;
+        setStatus(result.card.status);
+        setHasUnpublished(result.card.hasUnpublishedChanges);
+        setSavedAt(new Date());
+        return true;
+      }
+
+      if (result.conflict) {
+        // لا نحفظ فوق تعديل غيرنا: نوقف الحفظ التلقائي ونطلب إعادة التحميل.
+        setConflict(true);
+        return false;
+      }
+
+      setError(result.message ?? t('errors.generic'));
       return false;
-    }
+    })();
 
-    setError(result.message ?? t('errors.generic'));
-    return false;
-  }, [card.id, conflict, getValues, revision, t]);
+    inFlight.current = run;
+    try {
+      return await run;
+    } finally {
+      if (inFlight.current === run) {
+        inFlight.current = null;
+      }
+    }
+  }, [card.id, conflict, getValues, t]);
 
   // الحفظ التلقائي: يعتمد على تسلسل القيم لا على مرجع الكائن، فـwatch
   // تُرجع كائناً جديداً في كل تصيير ويصبح التأثير حلقة لا تنتهي.
@@ -145,7 +173,7 @@ export function CardEditor({
 
     if (result.ok && result.card) {
       setStatus(result.card.status);
-      setRevision(result.card.revision);
+      revisionRef.current = result.card.revision;
       setHasUnpublished(result.card.hasUnpublishedChanges);
       router.refresh();
       return;
